@@ -3,7 +3,7 @@
 # =============================================================================
 # Descrição: Script para inicializar a estrutura completa do projeto
 # Autor: Luiz Antonio Rezende
-# Data: 2025-08-12
+# Data: 2025-11-27
 # =============================================================================
 
 # Limpar ambiente
@@ -24,32 +24,30 @@ install_if_missing <- function(packages) {
 
 # Lista de pacotes essenciais
 required_packages <- c(
-  # Gerenciamento de projeto
-  "here", "renv", "usethis",
+  # Manipulação e Transformação de Dados:
+  "tidyverse", "janitor", "lubridate", "readxl", "writexl", "here",
   
-  # Tidyverse e manipulação de dados
-  "tidyverse", "magrittr", "purrr", "janitor", "skimr", "igraph",
+  # Análise Exploratória e Estatísticas Descritivas:
+  "skimr", "rstatix", "broom",
   
-  # Leitura e escrita de dados
-  "readxl", "writexl",
+  # Séries Temporais e Previsão:
+  "forecast", "tsintermittent", "smooth", "fable", "fabletools", "tsibble",
   
-  # Datas e tempo
-  "lubridate", "tsibble", "zoo",
+  # Análise de Redes e Grafos:
+  "igraph",
   
-  # Visualização básica
-  "plotly", "corrplot", "scales",
+  # Visualização:
+  "ggplot2", "patchwork", "ggrepel", "ggthemes", "ggsci", "viridis", "scales", 
+  "corrplot", "treemapify", "plotly",
   
-  # Visualização avançada e temas
-  "ggthemes", "ggsci", "patchwork", "treemap", "RColorBrewer", "treemapify",
+  # Tabelas e Relatórios:
+  "kableExtra", "DT",
   
-  # Séries temporais e previsão
-  "forecast", "fable", "fabletools", "tseries", "prophet",
+  # Computação Paralela e Monitoramento:
+  "future", "furrr", "progressr", "tictoc",
   
-  # Configuração e utilitários
-  "config", "yaml", "DT", "knitr", "rmarkdown",
-  
-  # Outros a serem classificados
-  "furrr", "smooth", "tictoc", "tsintermittent"
+  # Utilitários Gerais:
+  "magrittr", "yaml", "usethis", "stats", "mgcv"
 )
 
 # Instalar pacotes
