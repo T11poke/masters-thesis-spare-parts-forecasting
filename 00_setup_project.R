@@ -595,7 +595,7 @@ writeLines(load_config_content, here("R/utils/load_config.R"))
 cat("✅ Funções utilitárias criadas em R/utils/\n\n")
 
 # =============================================================================
-# 9. RESUMO FINAL
+# 9. FINAL
 # =============================================================================
 
 cat("\n", rep("=", 80), "\n", sep = "")

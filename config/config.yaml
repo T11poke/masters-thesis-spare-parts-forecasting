@@ -1,0 +1,66 @@
+# =============================================================================
+# ARQUIVO DE CONFIGURAÇÃO - Projeto Previsão de Demanda SISCEAB
+# =============================================================================
+
+project:
+  name: 'Previsão de Demanda SISCEAB'
+  author: 'Luiz Antonio Rezende'
+  description: 'Análise comparativa de métodos de previsão de demanda intermitente'
+
+paths:
+  data:
+    raw: 'data/raw'
+    processed: 'data/processed'
+    interim: 'data/interim'
+    external: 'data/external'
+  output:
+    figures: 'output/figures'
+    tables: 'output/tables'
+    models: 'output/models'
+    reports: 'output/reports'
+  logs: 'logs'
+
+parameters:
+  seed: 42
+  validation:
+    n_origins: 4
+    test_months: 12
+    train_min_months: 36
+  forecasting:
+    horizon: 12
+    methods:
+      - 'naive'
+      - 'mean'
+      - 'moving_average'
+      - 'croston'
+      - 'sba'
+      - 'tsb'
+      - 'arima'
+      - 'ets'
+      - 'poisson'
+      - 'gamma'
+      - 'adida'
+  metrics:
+    - 'mae'
+    - 'rmse'
+    - 'bias'
+    - 'linlin'
+    - 'mad_mean_ratio'
+  sbc:
+    adi_threshold: 1.32
+    cv2_threshold: 0.49
+
+computation:
+  parallel: true
+  n_cores: 8
+
+output:
+  save_intermediate: true
+  figures:
+    format: 'png'
+    dpi: 300
+    width: 10
+    height: 6
+  tables:
+    format: 'csv'
+
