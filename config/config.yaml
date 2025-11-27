@@ -5,6 +5,7 @@
 project:
   name: 'Previsão de Demanda SISCEAB'
   author: 'Luiz Antonio Rezende'
+  version: '1.0.0'
   description: 'Análise comparativa de métodos de previsão de demanda intermitente'
 
 paths:

@@ -1,108 +1,54 @@
 # =============================================================================
-# SCRIPT DE SETUP - PROJETO PREVISÃO DE DEMANDA
+# SCRIPT DE SETUP - PROJETO PREVISÃO DE DEMANDA SISCEAB
 # =============================================================================
 # Descrição: Script para inicializar a estrutura completa do projeto
 # Autor: Luiz Antonio Rezende
-# Data: 2025-8-1
-# Última atualização: 2025-11-27
+# Data: 2025-11-27
+# Versão: 2.0
 # =============================================================================
 
 # Limpar ambiente
 rm(list = ls())
 gc()
 
+cat("\n", rep("=", 80), "\n", sep = "")
+cat("SETUP DO PROJETO - PREVISÃO DE DEMANDA SISCEAB\n")
+cat(rep("=", 80), "\n\n", sep = "")
+
 # =============================================================================
-# 1. INICIALIZAR RENV
+# 1. INSTALAR PACOTES MÍNIMOS NECESSÁRIOS
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
-cat("INICIALIZAR RENV\n")
+cat("INSTALAR PACOTES ESSENCIAIS\n")
 cat(rep("=", 80), "\n\n", sep = "")
 
-if(!require("renv", quietly = TRUE)) {
-  install.packages("renv")
-}
+# Pacotes MÍNIMOS necessários para o script de setup funcionar
+minimal_packages <- c("here", "yaml", "renv")
 
-cat("🔧 Inicializando renv...\n")
-cat("   (Isso pode demorar alguns minutos na primeira vez)\n\n")
-
-# Inicializar renv se ainda não estiver
-if(!file.exists(here("renv.lock"))) {
-  renv::init(bare = TRUE)
-  cat("✅ renv inicializado!\n")
-  cat("   Execute 'renv::snapshot()' após instalar todos os pacotes\n\n")
-} else {
-  cat("✅ renv já está inicializado!\n\n")
-}
-
-
-# =============================================================================
-# 2. VERIFICAR E INSTALAR PACOTES NECESSÁRIOS
-# =============================================================================
-
-# Função para instalar pacotes se não estiverem instalados
-install_if_missing <- function(packages) {
-  new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
-  if(length(new_packages)) {
-    cat(sprintf("📦 Instalando %d pacote(s): %s\n", 
-                length(new_packages), 
-                paste(new_packages, collapse = ", ")))
-    install.packages(new_packages, dependencies = TRUE)
+cat("📦 Instalando pacotes essenciais (biblioteca global)...\n")
+for(pkg in minimal_packages) {
+  if(!requireNamespace(pkg, quietly = TRUE)) {
+    cat(sprintf("   → Instalando %s...\n", pkg))
+    install.packages(pkg, quiet = TRUE)
   } else {
-    cat("✅ Todos os pacotes já estão instalados!\n")
+    cat(sprintf("   ✓ %s já instalado\n", pkg))
   }
 }
 
-# Lista de pacotes essenciais
-required_packages <- c(
-  # Gerenciamento de ambiente
-  "renv",
-  
-  # Manipulação e Transformação de Dados:
-  "tidyverse", "janitor", "lubridate", "readxl", "writexl", "here",
-  
-  # Análise Exploratória e Estatísticas Descritivas:
-  "skimr", "rstatix", "broom",
-  
-  # Séries Temporais e Previsão:
-  "forecast", "tsintermittent", "smooth", "fable", "fabletools", "tsibble",
-  
-  # Análise de Redes e Grafos:
-  "igraph",
-  
-  # Visualização:
-  "ggplot2", "patchwork", "ggrepel", "ggthemes", "ggsci", "viridis", "scales", 
-  "corrplot", "treemapify", "plotly",
-  
-  # Tabelas e Relatórios:
-  "kableExtra", "DT",
-  
-  # Computação Paralela e Monitoramento:
-  "future", "furrr", "progressr", "tictoc",
-  
-  # Utilitários Gerais:
-  "magrittr", "yaml", "usethis", "stats", "mgcv"
-)
+# Carregar pacotes essenciais
+library(here)
+library(yaml)
 
-# Instalar pacotes
-cat("📦 Instalando pacotes necessários...\n")
-install_if_missing(required_packages)
-
-# Carregar pacotes principais
-suppressPackageStartupMessages({
-  library(here)
-  library(usethis)
-  library(yaml)
-  library(tidyverse)
-  library(magrittr)
-})
-cat("✅ Pacotes principais carregados\n\n")
+cat("\n✅ Pacotes essenciais carregados!\n\n")
 
 # =============================================================================
-# 3. CRIAR ESTRUTURA DE PASTAS
+# 2. CRIAR ESTRUTURA DE PASTAS (ANTES DO RENV)
 # =============================================================================
 
-cat("📁 Criando estrutura de pastas...\n")
+cat(rep("=", 80), "\n", sep = "")
+cat("ESTRUTURA DE PASTAS\n")
+cat(rep("=", 80), "\n\n", sep = "")
 
 # Definir estrutura de pastas
 folders <- c(
@@ -127,6 +73,7 @@ folders <- c(
 )
 
 # Criar pastas
+cat("📁 Criando estrutura de diretórios...\n")
 for(folder in folders) {
   if(!dir.exists(here(folder))) {
     dir.create(here(folder), recursive = TRUE, showWarnings = FALSE)
@@ -139,11 +86,11 @@ for(folder in folders) {
 cat("\n✅ Estrutura de pastas criada!\n\n")
 
 # =============================================================================
-# 4. CRIAR ARQUIVOS .gitkeep
+# 3. CRIAR ARQUIVOS .gitkeep
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
-cat("📌 Criando arquivos .gitkeep...\n")
+cat("ARQUIVOS .gitkeep\n")
 cat(rep("=", 80), "\n\n", sep = "")
 
 # Pastas que precisam de .gitkeep
@@ -163,6 +110,7 @@ gitkeep_folders <- c(
   "logs"
 )
 
+cat("📌 Criando arquivos .gitkeep...\n")
 for(folder in gitkeep_folders) {
   gitkeep_path <- here(folder, ".gitkeep")
   if(!file.exists(gitkeep_path)) {
@@ -174,8 +122,12 @@ for(folder in gitkeep_folders) {
 cat("\n✅ Arquivos .gitkeep criados!\n\n")
 
 # =============================================================================
-# 5. ATUALIZA ARQUIVO .gitignore PERSONALIZADO
+# 4. ADICIONAR AO ARQUIVO .gitignore
 # =============================================================================
+
+cat(rep("=", 80), "\n", sep = "")
+cat("CONFIGURAR .gitignore\n")
+cat(rep("=", 80), "\n\n", sep = "")
 
 gitignore_additions <- "
 # =============================================================================
@@ -248,7 +200,7 @@ secrets.yaml
 !docs/*.pptx
 "
 
-# Adicionar ao .gitignore existente
+# Adicionar ao .gitignore existente (não substituir)
 gitignore_path <- here(".gitignore")
 
 if(file.exists(gitignore_path)) {
@@ -264,7 +216,7 @@ if(file.exists(gitignore_path)) {
     file.copy(gitignore_path, backup_path, overwrite = TRUE)
     cat(sprintf("   Backup criado: %s\n", basename(backup_path)))
     
-    # Adicionar ao final
+    # Adicionar ao final (não substituir)
     cat(gitignore_additions, file = gitignore_path, append = TRUE)
     cat("✅ Regras adicionadas ao .gitignore existente!\n\n")
   } else {
@@ -297,7 +249,7 @@ desktop.ini
 }
 
 # =============================================================================
-# 6. CRIAR ARQUIVO DE CONFIGURAÇÃO config.yaml
+# 5. CRIAR ARQUIVO DE CONFIGURAÇÃO config.yaml
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -311,6 +263,7 @@ config_content <- "# ===========================================================
 project:
   name: 'Previsão de Demanda SISCEAB'
   author: 'Luiz Antonio Rezende'
+  version: '1.0.0'
   description: 'Análise comparativa de métodos de previsão de demanda intermitente'
 
 paths:
@@ -375,192 +328,7 @@ writeLines(config_content, here("config", "config.yaml"))
 cat("✅ Arquivo config.yaml criado em config/\n\n")
 
 # =============================================================================
-# 7. CRIAR README.md
-# =============================================================================
-
-cat(rep("=", 80), "\n", sep = "")
-cat("README.md\n")
-cat(rep("=", 80), "\n\n", sep = "")
-
-readme_content <- "# Previsão de Demanda para Sobressalentes do SISCEAB
-
-**Dissertação de Mestrado em Logística**
-
-Análise comparativa de métodos de previsão de demanda intermitente aplicados ao contexto de sobressalentes eletrônicos e eletromecânicos do Sistema de Controle do Espaço Aéreo Brasileiro (SISCEAB).
-
-## 👤 Autor
-
-**Luiz Antonio Rezende**  
-Mestrando em Logística  
-PUC-Rio
-
-## 🎯 Objetivos
-
-### Objetivo Geral
-Avaliar comparativamente o desempenho de diferentes métodos de previsão de demanda aplicados a sobressalentes e consumíveis do SISCEAB, visando identificar abordagens que otimizem a disponibilidade operacional dos sistemas críticos de controle de tráfego aéreo.
-
-### Objetivos Específicos
-- Caracterizar o padrão de demanda histórica segundo taxonomia SBC
-- Implementar e parametrizar 15+ métodos de previsão
-- Estabelecer métricas apropriadas para demanda intermitente
-- Conduzir análise comparativa com validação out-of-sample
-- Propor recomendações metodológicas para o DECEA
-
-## 📊 Estrutura do Projeto
-
-\`\`\`
-.
-├── data/
-│   ├── raw/              # Dados SILOMS (CONFIDENCIAIS - não versionados)
-│   ├── processed/        # Dados limpos e consolidados
-│   ├── interim/          # Dados intermediários
-│   └── external/         # Dados externos complementares
-├── R/
-│   ├── functions/        # Funções customizadas
-│   ├── analysis/         # Scripts de análise exploratória
-│   ├── modeling/         # Scripts de modelagem
-│   ├── validation/       # Scripts de validação
-│   └── utils/            # Funções utilitárias
-├── scripts/              # Scripts principais (workflow)
-├── output/
-│   ├── figures/          # Gráficos e visualizações
-│   ├── tables/           # Tabelas de resultados
-│   ├── models/           # Modelos salvos (.rds)
-│   └── reports/          # Relatórios finais
-├── docs/                 # Documentação adicional
-├── config/               # Arquivos de configuração
-│   └── config.yaml       # Configurações do projeto
-└── logs/                 # Logs de execução
-
-\`\`\`
-
-## 🔬 Métodos de Previsão
-
-### Família 1: Métodos Clássicos (Benchmarks)
-- Naive
-- Média Simples
-- Média Móvel (k=36 meses)
-
-### Família 2: Suavização Exponencial e Séries Temporais
-- ARIMA (AutoRegressive Integrated Moving Average)
-- ETS (Error, Trend, Seasonal)
-- Holt-Winters Aditivo e Multiplicativo
-- TSLM (Time Series Linear Model)
-
-### Família 3: Métodos Especializados (Demanda Intermitente)
-- **Croston Clássico** (1972)
-- **SBA** - Syntetos-Boylan Approximation (2005)
-- **TSB** - Teunter-Syntetos-Babai (2011)
-
-### Família 4: Métodos Probabilísticos
-- **Distribuição de Poisson** (método atual do DECEA)
-- **Distribuição Gama**
-
-### Família 5: Agregação Temporal
-- **ADIDA** - Aggregate-Disaggregate Intermittent Demand Approach
-
-## 📏 Métricas de Avaliação
-
-- **MAE** (Mean Absolute Error) - métrica primária
-- **RMSE** (Root Mean Squared Error)
-- **Bias** (Mean Error)
-- **LinLin** (Função de Perda Assimétrica, p=0.85)
-- **MAD/Mean Ratio**
-
-**Perspectivas de avaliação:**
-1. **Mensal**: acurácia mês a mês (12 previsões)
-2. **Anual agregada**: demanda total de 12 meses (planejamento orçamentário)
-
-## 🔄 Estratégia de Validação
-
-- **Método**: Rolling Origin com janela expansiva
-- **Origens**: 4 pontos temporais
-- **Horizonte**: 12 meses (h=12)
-- **Treino mínimo**: 36 meses
-
-## 🚀 Como Executar
-
-### 1. Configuração Inicial
-
-\`\`\`r
-# Executar setup completo (apenas primeira vez)
-source('00_setup_project.R')
-
-# Inicializar renv
-renv::init()
-\`\`\`
-
-### 2. Restaurar Ambiente (projetos clonados)
-
-\`\`\`r
-# Restaurar pacotes
-renv::restore()
-\`\`\`
-
-### 3. Workflow de Análise
-
-\`\`\`r
-# Scripts principais em scripts/
-....
-....
-....
-...
-...
-...
-...
-...
-...
-\`\`\`
-
-## 📦 Pacotes Principais
-
-- **Manipulação**: `tidyverse`, `janitor`, `lubridate`
-- **Séries Temporais**: `forecast`, `tsintermittent`, `fable`
-- **Visualização**: `ggplot2`, `patchwork`, `plotly`
-- **Redes**: `igraph` (consolidação de materiais alternados)
-- **Relatórios**: `kableExtra`, `DT`
-
-## ⚠️ Confidencialidade
-
-**IMPORTANTE**: Este projeto contém dados operacionais confidenciais do DECEA/SISCEAB.
-
-- Dados em `data/raw/` e `data/interim/` **NÃO** são versionados
-- Arquivos `.csv`, `.xlsx`, `.rds` com dados reais estão no `.gitignore`
-- Apenas código metodológico e estrutura são compartilhados no Git
-
-## 📚 Referências Principais
-
-- **BOYLAN, J. E.; SYNTETOS, A. A.** Intermittent Demand Forecasting: Context, Methods and Applications. Wiley, 2021.
-
-- **SYNTETOS, A. A.; BOYLAN, J. E.; CROSTON, J. D.** On the categorization of demand patterns. Journal of the Operational Research Society, v. 56, n. 5, p. 495-503, 2005.
-
-- **PETROPOULOS, F. et al.** Forecasting: theory and practice. International Journal of Forecasting, v. 38, n. 3, p. 705-871, 2022.
-
-- **TEUNTER, R. H.; SYNTETOS, A. A.; BABAI, M. Z.** Intermittent demand: Linking forecasting to inventory obsolescence. European Journal of Operational Research, v. 214, n. 3, p. 606-615, 2011.
-
-## 📧 Contato
-
-[Seu email institucional]
-
----
-
-**Status**: 🚧 Em desenvolvimento  
-**Última atualização**: 2025-11-27  
-**Versão**: 2.0.0
-"
-
-readme_path <- here("README.md")
-if(file.exists(readme_path)) {
-  cat("⚠️  README.md já existe. Fazendo backup...\n")
-  file.copy(readme_path, here("README.backup.md"), overwrite = TRUE)
-}
-
-writeLines(readme_content, readme_path)
-cat("✅ README.md criado!\n\n")
-
-
-# =============================================================================
-# 8. CRIAR FUNÇÕES UTILITÁRIAS
+# 6. CRIAR FUNÇÕES UTILITÁRIAS
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -606,25 +374,279 @@ log_message <- function(msg, level = 'INFO') {
 }
 
 # Configurar seed global
-if(exists('config')) {
-  set.seed(config$parameters$seed)
-}
+config <- load_config()
+set.seed(config$parameters$seed)
+
+cat('✅ Configuração carregada. Seed definido:', config$parameters$seed, '\\n')
 "
 
 writeLines(load_config_content, here("R/utils/load_config.R"))
 cat("✅ Funções utilitárias criadas em R/utils/\n\n")
 
 # =============================================================================
-# 9. FINAL
+# 7. INICIALIZAR RENV (AGORA SIM!)
+# =============================================================================
+
+cat(rep("=", 80), "\n", sep = "")
+cat("INICIALIZAR AMBIENTE RENV\n")
+cat(rep("=", 80), "\n\n", sep = "")
+
+# Verificar se renv já foi inicializado
+if(!file.exists(here("renv.lock"))) {
+  cat("🔧 Inicializando renv (criando ambiente isolado)...\n")
+  cat("   (Isso pode demorar alguns minutos)\n\n")
+  
+  tryCatch({
+    # Inicializar com bare = TRUE para não instalar pacotes ainda
+    renv::init(bare = TRUE, restart = FALSE)
+    
+    cat("\n✅ renv inicializado com sucesso!\n")
+    cat("   Ambiente isolado criado em: renv/library/\n\n")
+    
+  }, error = function(e) {
+    cat("\n⚠️  Erro ao inicializar renv:\n")
+    cat(sprintf("   %s\n\n", e$message))
+    cat("💡 Você pode tentar manualmente:\n")
+    cat("   1. Reiniciar R: Session → Restart R\n")
+    cat("   2. Executar: renv::init()\n\n")
+  })
+  
+} else {
+  cat("✅ renv já está inicializado!\n")
+  cat("   Usando ambiente isolado existente.\n\n")
+}
+
+# =============================================================================
+# 8. INSTALAR PACOTES DO PROJETO (DENTRO DO RENV)
+# =============================================================================
+
+cat(rep("=", 80), "\n", sep = "")
+cat("INSTALAR PACOTES DO PROJETO\n")
+cat(rep("=", 80), "\n\n", sep = "")
+
+# Lista completa de pacotes do projeto
+project_packages <- c(
+  # Manipulação e Transformação de Dados:
+  "tidyverse", "janitor", "lubridate", "readxl", "writexl",
+  
+  # Análise Exploratória e Estatísticas Descritivas:
+  "skimr", "rstatix", "broom",
+  
+  # Séries Temporais e Previsão:
+  "forecast", "tsintermittent", "smooth", "fable", "fabletools", "tsibble",
+  
+  # Análise de Redes e Grafos:
+  "igraph",
+  
+  # Visualização:
+  "ggplot2", "patchwork", "ggrepel", "ggthemes", "ggsci", "viridis", "scales", 
+  "corrplot", "treemapify", "plotly",
+  
+  # Tabelas e Relatórios:
+  "kableExtra", "DT",
+  
+  # Computação Paralela e Monitoramento:
+  "future", "furrr", "progressr", "tictoc",
+  
+  # Utilitários Gerais:
+  "magrittr", "usethis", "stats", "mgcv"
+)
+
+cat("ℹ️  Os pacotes serão instalados no ambiente isolado do renv.\n")
+cat(sprintf("   Total de pacotes a instalar: %d\n\n", length(project_packages)))
+
+cat("📦 Para instalar os pacotes, execute:\n\n")
+cat("   install.packages(c(\n")
+for(i in 1:length(project_packages)) {
+  pkg <- project_packages[i]
+  if(i == length(project_packages)) {
+    cat(sprintf("     '%s'\n", pkg))
+  } else {
+    cat(sprintf("     '%s',\n", pkg))
+  }
+}
+cat("   ))\n\n")
+cat("   Depois execute: renv::snapshot()\n\n")
+
+cat("⚠️  IMPORTANTE: Não execute install.packages() agora!\n")
+cat("   Primeiro faça commit do setup inicial, depois instale os pacotes.\n\n")
+
+# =============================================================================
+# 9. CRIAR README.md
+# =============================================================================
+
+cat(rep("=", 80), "\n", sep = "")
+cat("README.md\n")
+cat(rep("=", 80), "\n\n", sep = "")
+
+readme_content <- "# Previsão de Demanda para Sobressalentes do SISCEAB
+
+**Dissertação de Mestrado em Logística**
+
+Análise comparativa de métodos de previsão de demanda intermitente aplicados ao contexto de sobressalentes eletrônicos e eletromecânicos do Sistema de Controle do Espaço Aéreo Brasileiro (SISCEAB).
+
+## 👤 Autor
+
+**Luiz Antonio Rezende**  
+Mestrando em Logística  
+[Sua Instituição]
+
+## 🎯 Objetivos
+
+### Objetivo Geral
+Avaliar comparativamente o desempenho de diferentes métodos de previsão de demanda aplicados a sobressalentes e consumíveis do SISCEAB, visando identificar abordagens que otimizem a disponibilidade operacional dos sistemas críticos de controle de tráfego aéreo.
+
+### Objetivos Específicos
+- Caracterizar o padrão de demanda histórica segundo taxonomia SBC
+- Implementar e parametrizar 15+ métodos de previsão
+- Estabelecer métricas apropriadas para demanda intermitente
+- Conduzir análise comparativa com validação out-of-sample
+- Propor recomendações metodológicas para o DECEA
+
+## 📊 Estrutura do Projeto
+
+\`\`\`
+.
+├── data/
+│   ├── raw/              # Dados SILOMS (CONFIDENCIAIS - não versionados)
+│   ├── processed/        # Dados limpos e consolidados
+│   ├── interim/          # Dados intermediários
+│   └── external/         # Dados externos complementares
+├── R/
+│   ├── functions/        # Funções customizadas
+│   ├── analysis/         # Scripts de análise exploratória
+│   ├── modeling/         # Scripts de modelagem
+│   ├── validation/       # Scripts de validação
+│   └── utils/            # Funções utilitárias
+├── scripts/              # Scripts principais (workflow)
+├── output/
+│   ├── figures/          # Gráficos e visualizações
+│   ├── tables/           # Tabelas de resultados
+│   ├── models/           # Modelos salvos (.rds)
+│   └── reports/          # Relatórios finais
+├── docs/                 # Documentação adicional
+├── config/               # Arquivos de configuração
+│   └── config.yaml       # Configurações do projeto
+└── logs/                 # Logs de execução
+
+\`\`\`
+
+## 🚀 Como Começar
+
+### 1. Clonar o Repositório
+
+\`\`\`bash
+git clone https://github.com/seu-usuario/masters-thesis-spare-parts-forecasting.git
+cd masters-thesis-spare-parts-forecasting
+\`\`\`
+
+### 2. Abrir Projeto no RStudio
+
+- Abra o arquivo \`.Rproj\`
+- O renv será ativado automaticamente
+
+### 3. Restaurar Pacotes
+
+\`\`\`r
+# Instalar todos os pacotes do projeto
+renv::restore()
+\`\`\`
+
+### 4. Adicionar Dados
+
+- Colocar dados do SILOMS em \`data/raw/\`
+- Estes arquivos não serão versionados (protegidos pelo .gitignore)
+
+## 🔬 Métodos de Previsão
+
+### Família 1: Métodos Clássicos (Benchmarks)
+- Naive
+- Média Simples
+- Média Móvel (k=36 meses)
+
+### Família 2: Suavização Exponencial e Séries Temporais
+- ARIMA (AutoRegressive Integrated Moving Average)
+- ETS (Error, Trend, Seasonal)
+- Holt-Winters Aditivo e Multiplicativo
+- TSLM (Time Series Linear Model)
+
+### Família 3: Métodos Especializados (Demanda Intermitente)
+- **Croston Clássico** (1972)
+- **SBA** - Syntetos-Boylan Approximation (2005)
+- **TSB** - Teunter-Syntetos-Babai (2011)
+
+### Família 4: Métodos Probabilísticos
+- **Distribuição de Poisson** (método atual do DECEA)
+- **Distribuição Gama**
+
+### Família 5: Agregação Temporal
+- **ADIDA** - Aggregate-Disaggregate Intermittent Demand Approach
+
+## 📏 Métricas de Avaliação
+
+- **MAE** (Mean Absolute Error) - métrica primária
+- **RMSE** (Root Mean Squared Error)
+- **Bias** (Mean Error)
+- **LinLin** (Função de Perda Assimétrica, p=0.85)
+- **MAD/Mean Ratio**
+
+**Perspectivas de avaliação:**
+1. **Mensal**: acurácia mês a mês (12 previsões)
+2. **Anual agregada**: demanda total de 12 meses (planejamento orçamentário)
+
+## 🔄 Estratégia de Validação
+
+- **Método**: Rolling Origin com janela expansiva
+- **Origens**: 4 pontos temporais
+- **Horizonte**: 12 meses (h=12)
+- **Treino mínimo**: 36 meses
+
+## ⚠️ Confidencialidade
+
+**IMPORTANTE**: Este projeto contém dados operacionais confidenciais do DECEA/SISCEAB.
+
+- Dados em \`data/raw/\` e \`data/interim/\` **NÃO** são versionados
+- Arquivos \`.csv\`, \`.xlsx\`, \`.rds\` com dados reais estão no \`.gitignore\`
+- Apenas código metodológico e estrutura são compartilhados no Git
+
+## 📚 Referências Principais
+
+- **BOYLAN, J. E.; SYNTETOS, A. A.** Intermittent Demand Forecasting: Context, Methods and Applications. Wiley, 2021.
+
+- **SYNTETOS, A. A.; BOYLAN, J. E.; CROSTON, J. D.** On the categorization of demand patterns. Journal of the Operational Research Society, v. 56, n. 5, p. 495-503, 2005.
+
+- **PETROPOULOS, F. et al.** Forecasting: theory and practice. International Journal of Forecasting, v. 38, n. 3, p. 705-871, 2022.
+
+- **TEUNTER, R. H.; SYNTETOS, A. A.; BABAI, M. Z.** Intermittent demand: Linking forecasting to inventory obsolescence. European Journal of Operational Research, v. 214, n. 3, p. 606-615, 2011.
+
+## 📧 Contato
+
+[Seu email institucional]
+
+---
+
+**Status**: 🚧 Em desenvolvimento  
+**Última atualização**: 2025-11-27  
+**Versão**: 1.0.0
+"
+
+readme_path <- here("README.md")
+if(file.exists(readme_path)) {
+  cat("⚠️  README.md já existe. Fazendo backup...\n")
+  file.copy(readme_path, here("README.backup.md"), overwrite = TRUE)
+}
+
+writeLines(readme_content, readme_path)
+cat("✅ README.md criado!\n\n")
+
+# =============================================================================
+# 10. RESUMO FINAL
 # =============================================================================
 
 cat("\n", rep("=", 80), "\n", sep = "")
-cat("✅ SETUP CONCLUÍDO COM SUCESSO!🚀\n")
+cat("✅ SETUP CONCLUÍDO COM SUCESSO!\n")
 cat(rep("=", 80), "\n\n", sep = "")
 
 # Limpar ambiente
 rm(list = ls())
 gc()
-
-
-

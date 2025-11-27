@@ -48,3 +48,72 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
+
+# =============================================================================
+# ADIÇÕES PARA PROJETO PREVISÃO DE DEMANDA SISCEAB
+# =============================================================================
+
+# === DADOS CONFIDENCIAIS ===
+data/raw/*
+data/interim/*
+data/external/*.csv
+data/external/*.xlsx
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+
+# === DADOS PROCESSADOS GRANDES ===
+*.csv
+*.xlsx
+*.xls
+*.rds
+*.feather
+*.parquet
+data/processed/*.csv
+data/processed/*.rds
+
+# === OUTPUTS GERADOS ===
+output/figures/*.png
+output/figures/*.pdf
+output/figures/*.jpg
+output/tables/*.csv
+output/tables/*.xlsx
+output/models/*.rds
+output/reports/*.html
+output/reports/*.pdf
+!output/figures/.gitkeep
+!output/tables/.gitkeep
+!output/models/.gitkeep
+
+# === LOGS ===
+logs/*.log
+logs/*.txt
+*.log
+
+# === CACHE E TEMPORÁRIOS ===
+*_cache/
+*_files/
+*.tmp
+*.temp
+~$*
+
+# === RENV (adicional) ===
+renv/library/
+renv/local/
+renv/cellar/
+renv/lock/
+renv/python/
+renv/sandbox/
+renv/staging/
+
+# === CREDENCIAIS ===
+.Renviron
+credentials.R
+config_local.R
+secrets.yaml
+*.env
+
+# === DOCUMENTOS TEMPORÁRIOS ===
+*.docx
+*.pptx
+!docs/*.docx
+!docs/*.pptx

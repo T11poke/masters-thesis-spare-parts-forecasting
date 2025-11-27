@@ -36,7 +36,8 @@ log_message <- function(msg, level = 'INFO') {
 }
 
 # Configurar seed global
-if(exists('config')) {
-  set.seed(config$parameters$seed)
-}
+config <- load_config()
+set.seed(config$parameters$seed)
+
+cat('✅ Configuração carregada. Seed definido:', config$parameters$seed, '\n')
 

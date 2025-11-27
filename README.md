@@ -1,5 +1,3 @@
-# masters-thesis-spare-parts-forecasting
-Comparative study of intermittent demand forecasting methods for air traffic control (ATC) spare parts. Implements 15+ forecasting techniques with empirical validation on ATC systems data. Master's thesis research in logistics and supply chain management.
 # Previsão de Demanda para Sobressalentes do SISCEAB
 
 **Dissertação de Mestrado em Logística**
@@ -10,7 +8,7 @@ Análise comparativa de métodos de previsão de demanda intermitente aplicados 
 
 **Luiz Antonio Rezende**  
 Mestrando em Logística  
-PUC-Rio
+[Sua Instituição]
 
 ## 🎯 Objetivos
 
@@ -51,6 +49,32 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 └── logs/                 # Logs de execução
 
 ```
+
+## 🚀 Como Começar
+
+### 1. Clonar o Repositório
+
+```bash
+git clone https://github.com/seu-usuario/masters-thesis-spare-parts-forecasting.git
+cd masters-thesis-spare-parts-forecasting
+```
+
+### 2. Abrir Projeto no RStudio
+
+- Abra o arquivo `.Rproj`
+- O renv será ativado automaticamente
+
+### 3. Restaurar Pacotes
+
+```r
+# Instalar todos os pacotes do projeto
+renv::restore()
+```
+
+### 4. Adicionar Dados
+
+- Colocar dados do SILOMS em `data/raw/`
+- Estes arquivos não serão versionados (protegidos pelo .gitignore)
 
 ## 🔬 Métodos de Previsão
 
@@ -96,48 +120,6 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 - **Horizonte**: 12 meses (h=12)
 - **Treino mínimo**: 36 meses
 
-## 🚀 Como Executar
-
-### 1. Configuração Inicial
-
-```r
-# Executar setup completo (apenas primeira vez)
-source('00_setup_project.R')
-
-# Inicializar renv
-renv::init()
-```
-
-### 2. Restaurar Ambiente (projetos clonados)
-
-```r
-# Restaurar pacotes
-renv::restore()
-```
-
-### 3. Workflow de Análise
-
-```r
-# Scripts principais em scripts/
-....
-....
-....
-...
-...
-...
-...
-...
-...
-```
-
-## 📦 Pacotes Principais
-
-- **Manipulação**: `tidyverse`, `janitor`, `lubridate`
-- **Séries Temporais**: `forecast`, `tsintermittent`, `fable`
-- **Visualização**: `ggplot2`, `patchwork`, `plotly`
-- **Redes**: `igraph` (consolidação de materiais alternados)
-- **Relatórios**: `kableExtra`, `DT`
-
 ## ⚠️ Confidencialidade
 
 **IMPORTANTE**: Este projeto contém dados operacionais confidenciais do DECEA/SISCEAB.
@@ -164,5 +146,5 @@ renv::restore()
 
 **Status**: 🚧 Em desenvolvimento  
 **Última atualização**: 2025-11-27  
-**Versão**: 2.0.0
+**Versão**: 1.0.0
 
