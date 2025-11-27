@@ -43,7 +43,7 @@ library(yaml)
 cat("\n✅ Pacotes essenciais carregados!\n\n")
 
 # =============================================================================
-# 2. CRIAR ESTRUTURA DE PASTAS (ANTES DO RENV)
+# 2. CRIAR ESTRUTURA DE PASTAS
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -384,7 +384,7 @@ writeLines(load_config_content, here("R/utils/load_config.R"))
 cat("✅ Funções utilitárias criadas em R/utils/\n\n")
 
 # =============================================================================
-# 7. INICIALIZAR RENV (AGORA SIM!)
+# 7. INICIALIZAR RENV
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -417,7 +417,7 @@ if(!file.exists(here("renv.lock"))) {
 }
 
 # =============================================================================
-# 8. INSTALAR PACOTES DO PROJETO (DENTRO DO RENV)
+# 8. INSTALAR PACOTES DO PROJETO
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -465,11 +465,6 @@ for(i in 1:length(project_packages)) {
     cat(sprintf("     '%s',\n", pkg))
   }
 }
-cat("   ))\n\n")
-cat("   Depois execute: renv::snapshot()\n\n")
-
-cat("⚠️  IMPORTANTE: Não execute install.packages() agora!\n")
-cat("   Primeiro faça commit do setup inicial, depois instale os pacotes.\n\n")
 
 # =============================================================================
 # 9. CRIAR README.md
@@ -489,7 +484,7 @@ Análise comparativa de métodos de previsão de demanda intermitente aplicados 
 
 **Luiz Antonio Rezende**  
 Mestrando em Logística  
-[Sua Instituição]
+PUC-Rio
 
 ## 🎯 Objetivos
 
@@ -627,7 +622,7 @@ renv::restore()
 
 **Status**: 🚧 Em desenvolvimento  
 **Última atualização**: 2025-11-27  
-**Versão**: 1.0.0
+**Versão**: 2.0.0
 "
 
 readme_path <- here("README.md")
