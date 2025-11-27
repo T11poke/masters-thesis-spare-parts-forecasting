@@ -48,22 +48,3 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-# Dados confidenciais do DECEA/SISCEAB
-data/*
-!data/.gitkeep
-
-# Dados processados grandes
-*.csv
-*.xlsx
-*.xls
-*.rds
-*.feather
-*.parquet
-
-# Outputs gerados
-output/*.png
-output/*.pdf
-output/*.html
-!output/figures/.gitkeep
-!output/tables/.gitkeep
-
