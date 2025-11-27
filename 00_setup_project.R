@@ -12,7 +12,32 @@ rm(list = ls())
 gc()
 
 # =============================================================================
-# 1. VERIFICAR E INSTALAR PACOTES NECESSÁRIOS
+# 1. INICIALIZAR RENV
+# =============================================================================
+
+cat(rep("=", 80), "\n", sep = "")
+cat("INICIALIZAR RENV\n")
+cat(rep("=", 80), "\n\n", sep = "")
+
+if(!require("renv", quietly = TRUE)) {
+  install.packages("renv")
+}
+
+cat("🔧 Inicializando renv...\n")
+cat("   (Isso pode demorar alguns minutos na primeira vez)\n\n")
+
+# Inicializar renv se ainda não estiver
+if(!file.exists(here("renv.lock"))) {
+  renv::init(bare = TRUE)
+  cat("✅ renv inicializado!\n")
+  cat("   Execute 'renv::snapshot()' após instalar todos os pacotes\n\n")
+} else {
+  cat("✅ renv já está inicializado!\n\n")
+}
+
+
+# =============================================================================
+# 2. VERIFICAR E INSTALAR PACOTES NECESSÁRIOS
 # =============================================================================
 
 # Função para instalar pacotes se não estiverem instalados
@@ -74,7 +99,7 @@ suppressPackageStartupMessages({
 cat("✅ Pacotes principais carregados\n\n")
 
 # =============================================================================
-# 2. CRIAR ESTRUTURA DE PASTAS
+# 3. CRIAR ESTRUTURA DE PASTAS
 # =============================================================================
 
 cat("📁 Criando estrutura de pastas...\n")
@@ -114,7 +139,7 @@ for(folder in folders) {
 cat("\n✅ Estrutura de pastas criada!\n\n")
 
 # =============================================================================
-# 3. CRIAR ARQUIVOS .gitkeep
+# 4. CRIAR ARQUIVOS .gitkeep
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -149,15 +174,12 @@ for(folder in gitkeep_folders) {
 cat("\n✅ Arquivos .gitkeep criados!\n\n")
 
 # =============================================================================
-# 4. CRIAR ARQUIVO .gitignore PERSONALIZADO
+# 5. ATUALIZA ARQUIVO .gitignore PERSONALIZADO
 # =============================================================================
 
-cat(rep("=", 80), "\n", sep = "")
-cat("CONFIGURAR .gitignore\n")
-cat(rep("=", 80), "\n\n", sep = "")
-
-gitignore_content <- "# =============================================================================
-# .gitignore - Projeto Previsão de Demanda SISCEAB
+gitignore_additions <- "
+# =============================================================================
+# ADIÇÕES PARA PROJETO PREVISÃO DE DEMANDA SISCEAB
 # =============================================================================
 
 # === DADOS CONFIDENCIAIS ===
@@ -203,14 +225,7 @@ logs/*.txt
 *.temp
 ~$*
 
-# === RSTUDIO ===
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
-*.Rproj.user
-
-# === RENV ===
+# === RENV (adicional) ===
 renv/library/
 renv/local/
 renv/cellar/
@@ -226,6 +241,46 @@ config_local.R
 secrets.yaml
 *.env
 
+# === DOCUMENTOS TEMPORÁRIOS ===
+*.docx
+*.pptx
+!docs/*.docx
+!docs/*.pptx
+"
+
+# Adicionar ao .gitignore existente
+gitignore_path <- here(".gitignore")
+
+if(file.exists(gitignore_path)) {
+  # Ler conteúdo existente
+  existing_content <- readLines(gitignore_path, warn = FALSE)
+  
+  # Verificar se já tem as adições (evitar duplicação)
+  if(!any(grepl("PROJETO PREVISÃO DE DEMANDA SISCEAB", existing_content))) {
+    cat("📝 .gitignore já existe. Adicionando regras específicas do projeto...\n")
+    
+    # Fazer backup
+    backup_path <- here(".gitignore.backup")
+    file.copy(gitignore_path, backup_path, overwrite = TRUE)
+    cat(sprintf("   Backup criado: %s\n", basename(backup_path)))
+    
+    # Adicionar ao final
+    cat(gitignore_additions, file = gitignore_path, append = TRUE)
+    cat("✅ Regras adicionadas ao .gitignore existente!\n\n")
+  } else {
+    cat("✅ .gitignore já contém as regras do projeto!\n\n")
+  }
+} else {
+  # Se não existir, criar do zero
+  cat("📝 Criando .gitignore...\n")
+  
+  # Conteúdo base para R
+  base_content <- "# === R BASE ===
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
 # === SISTEMA OPERACIONAL ===
 .DS_Store
 .DS_Store?
@@ -235,26 +290,14 @@ secrets.yaml
 ehthumbs.db
 Thumbs.db
 desktop.ini
-
-# === DOCUMENTOS TEMPORÁRIOS ===
-*.docx
-*.pptx
-!docs/*.docx
-!docs/*.pptx
 "
-
-# Criar ou atualizar .gitignore
-gitignore_path <- here(".gitignore")
-if(file.exists(gitignore_path)) {
-  cat("⚠️  .gitignore já existe. Fazendo backup...\n")
-  file.copy(gitignore_path, here(".gitignore.backup"), overwrite = TRUE)
+  
+  writeLines(c(base_content, gitignore_additions), gitignore_path)
+  cat("✅ .gitignore criado!\n\n")
 }
 
-writeLines(gitignore_content, gitignore_path)
-cat("✅ .gitignore configurado!\n\n")
-
 # =============================================================================
-# 5. CRIAR ARQUIVO DE CONFIGURAÇÃO config.yaml
+# 6. CRIAR ARQUIVO DE CONFIGURAÇÃO config.yaml
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -332,7 +375,7 @@ writeLines(config_content, here("config", "config.yaml"))
 cat("✅ Arquivo config.yaml criado em config/\n\n")
 
 # =============================================================================
-# 6. CRIAR README.md
+# 7. CRIAR README.md
 # =============================================================================
 
 cat(rep("=", 80), "\n", sep = "")
@@ -515,29 +558,6 @@ if(file.exists(readme_path)) {
 writeLines(readme_content, readme_path)
 cat("✅ README.md criado!\n\n")
 
-# =============================================================================
-# 7. INICIALIZAR RENV
-# =============================================================================
-
-cat(rep("=", 80), "\n", sep = "")
-cat("INICIALIZAR RENV\n")
-cat(rep("=", 80), "\n\n", sep = "")
-
-if(!require("renv", quietly = TRUE)) {
-  install.packages("renv")
-}
-
-cat("🔧 Inicializando renv...\n")
-cat("   (Isso pode demorar alguns minutos na primeira vez)\n\n")
-
-# Inicializar renv se ainda não estiver
-if(!file.exists(here("renv.lock"))) {
-  renv::init(bare = TRUE)
-  cat("✅ renv inicializado!\n")
-  cat("   Execute 'renv::snapshot()' após instalar todos os pacotes\n\n")
-} else {
-  cat("✅ renv já está inicializado!\n\n")
-}
 
 # =============================================================================
 # 8. CRIAR FUNÇÕES UTILITÁRIAS
