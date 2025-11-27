@@ -3,7 +3,8 @@
 # =============================================================================
 # Descrição: Script para inicializar a estrutura completa do projeto
 # Autor: Luiz Antonio Rezende
-# Data: 2025-11-27
+# Data: 2025-8-1
+# Última atualização: 2025-11-27
 # =============================================================================
 
 # Limpar ambiente
@@ -18,7 +19,12 @@ gc()
 install_if_missing <- function(packages) {
   new_packages <- packages[!(packages %in% installed.packages()[,"Package"])]
   if(length(new_packages)) {
+    cat(sprintf("📦 Instalando %d pacote(s): %s\n", 
+                length(new_packages), 
+                paste(new_packages, collapse = ", ")))
     install.packages(new_packages, dependencies = TRUE)
+  } else {
+    cat("✅ Todos os pacotes já estão instalados!\n")
   }
 }
 
