@@ -1,11 +1,13 @@
 # =============================================================================
 # ARQUIVO DE CONFIGURAÇÃO - Projeto Previsão de Demanda SISCEAB
 # =============================================================================
+# Versão: 2.0.0
+# Atualizada em 2025-11-27
 
 project:
   name: 'Previsão de Demanda SISCEAB'
   author: 'Luiz Antonio Rezende'
-  version: '1.0.0'
+  version: '2.0.0'
   description: 'Análise comparativa de métodos de previsão de demanda intermitente'
 
 paths:
@@ -20,6 +22,15 @@ paths:
     models: 'output/models'
     reports: 'output/reports'
   logs: 'logs'
+
+data:
+  files:
+    consumo: 'dados_consumo-19-11-25.xlsx'
+    alternados: 'dados_alternados-19-11-25.xlsx'
+      # Configurações de leitura
+  sheets:
+    consumo: 'Select t_historico_consumo_proj'
+    alternados: 'Select t_alternado'
 
 parameters:
   seed: 42
@@ -50,6 +61,11 @@ parameters:
   sbc:
     adi_threshold: 1.32
     cv2_threshold: 0.49
+  # Parâmetros de tratamento de dados
+  data_cleaning:
+    min_occurrences: 3  # Mínimo de ocorrências de demanda não-zero
+    outlier_iqr_factor: 3.0  # Fator IQR para detecção de outliers
+    discontinuity_months: 36  # Meses sem demanda para considerar descontinuado  
 
 computation:
   parallel: true

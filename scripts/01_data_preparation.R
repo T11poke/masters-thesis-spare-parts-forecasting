@@ -19,10 +19,27 @@ library(janitor)
 library(igraph)
 library(future)
 
-source(here("R", "functions", "tratamento_dados.R"))
+source(here("R/utils/load_config.R"))
+source(here("R/functions/tratamento_dados.R"))
+
+config <- load_config()
+print(config$parameters$seed)
+set.seed(config$parameters$seed)
+
+log_message("========================================", "INFO")
+log_message("INICIANDO PREPARAÇÃO DOS DADOS", "INFO")
+log_message("========================================", "INFO")
+log_message(sprintf("Seed configurado: %d", config$parameters$seed), "INFO")
+log_message(sprintf("Versão do R: %s", R.version.string), "INFO")
 
 # Configuração para paralelização
-plan(multisession, workers = parallel::detectCores() - 1)
+if(config$computation$parallel) {
+  plan(multisession, workers = config$computation$n_cores)
+  log_message(sprintf("Paralelização ativada: %d cores", config$computation$n_cores), "INFO")
+} else {
+  plan(sequential)
+  log_message("Modo sequencial ativado", "INFO")
+}
 
 # 1. CARREGAMENTO DOS DADOS ####
 
