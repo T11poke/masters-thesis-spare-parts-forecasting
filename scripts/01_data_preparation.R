@@ -53,7 +53,7 @@ log_message(sprintf("Lendo arquivo: %s", basename(arquivo_consumo)), "INFO")
 
 data_consumo <- read_excel(
   arquivo_consumo,
-  sheet = "Select t_historico_consumo_proj"
+  sheet = config$data$sheets$consumo
 ) %>% 
   clean_names()
 
@@ -64,7 +64,7 @@ log_message(sprintf("Lendo arquivo: %s", basename(arquivo_alternados)), "INFO")
 
 data_alternados <- read_excel(
   arquivo_alternados,
-  sheet = "Select t_alternado"
+  sheet = config$data$sheets$alternados
 ) %>%
   clean_names() %>%
   select(-nr_pn, -pn_alternado)  # Remove colunas desnecessárias
