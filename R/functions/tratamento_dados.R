@@ -123,12 +123,14 @@ criar_relatorio_qualidade <- function(validacao, nome_dataset = "Dataset") {
 #' @param coluna_ano nome da coluna de ano
 #' @param coluna_mes nome da coluna de mês
 #' @param coluna_qt nome da coluna de quantidade
+#' @param coluna_un_med nome da coluna com a unidade de medida
 #' @return dataframe agregado e limpo
 agregar_por_material_mestre <- function(data, 
                                         coluna_material = "cd_material_final",
                                         coluna_ano = "ano_competencia", 
                                         coluna_mes = "mes_competencia",
-                                        coluna_qt = "qt_consumo") {
+                                        coluna_qt = "qt_consumo",
+                                        coluna_un = "sg_medida_port") {
   
   data %>%
     mutate(
@@ -140,7 +142,8 @@ agregar_por_material_mestre <- function(data,
     group_by(
       .data[[coluna_material]],
       .data[[coluna_ano]],
-      .data[[coluna_mes]]
+      .data[[coluna_mes]],
+      .data[[coluna_un]]
     ) %>%
     summarise(
       qt_total = sum(qt_limpo, na.rm = TRUE),
@@ -152,6 +155,7 @@ agregar_por_material_mestre <- function(data,
     rename(
       cd_material = .data[[coluna_material]],
       ano_competencia = .data[[coluna_ano]],
-      mes_competencia = .data[[coluna_mes]]
+      mes_competencia = .data[[coluna_mes]],
+      sg_medida_port = .data[[coluna_un]]
     )
 }
