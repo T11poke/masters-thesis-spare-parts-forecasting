@@ -48,8 +48,8 @@ po/*~
 # RStudio Connect folder
 rsconnect/
 
-# Relatório HTML
-.html
+# Readme HTML
+README.html
 
 # =============================================================================
 # ADIÇÕES PARA PROJETO PREVISÃO DE DEMANDA SISCEAB
