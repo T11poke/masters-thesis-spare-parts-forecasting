@@ -107,9 +107,13 @@ log_message(sprintf("Duplicatas identificadas: %d", duplicados_alternados),
             if(duplicados_alternados > 0) "WARNING" else "INFO")
 
 # 3. TRATAMENTO DOS DADOS DE ALTERNADOS ####
-# Metodologia: 3.3.2. Tratamento e limpeza dos dados
+#' Metodologia: 3.3.2. Tratamento e limpeza dos dados
+#' Primeira etapa: Compilação de alternados
+#' Segunda etapa: Identificação e tratamento de outliers
+#' Terceira etapa: validação de consistência
+#' Quarta etapa: transformações para séries temporais completas
 
-## 3.1. Primeira etapa ####
+## ETAPA 1/4: Compilação de alternados ####
 
 log_message("Processando consolidação de materiais alternados (Etapa 1 de 4)", "INFO")
 cat("\n🔄 Processando mapeamento de SKUs alternados...\n")
@@ -174,7 +178,7 @@ grupos_stats <- mapa_id_para_grupo %>%
 cat("\nDistribuição dos grupos de alternados:\n")
 print(grupos_stats)
 
-# 4. APLICAÇÃO DO MAPEAMENTO AOS DADOS DE CONSUMO ####
+### APLICAÇÃO DO MAPEAMENTO AOS DADOS DE CONSUMO ####
 # METODOLOGIA: "Remapearam-se registros substituindo código original por código mestre"
 
 log_message("Aplicando mapeamento aos dados de consumo", "INFO")
@@ -206,8 +210,10 @@ materiais_mapeados <- data_com_mestre %>%
 cat(sprintf("   - Materiais afetados pelo mapeamento: %s\n", format(materiais_mapeados, big.mark = ",")))
 log_message(sprintf("Materiais remapeados: %s", format(materiais_mapeados, big.mark = ",")), "INFO")
 
-# 5. AGREGAÇÃO DOS CONSUMOS POR MATERIAL MESTRE ####
+### AGREGAÇÃO DOS CONSUMOS POR MATERIAL MESTRE ####
+# METODOLOGIA: "agregam-se consumos por período de competência, considerando unidades de medida"
 
+log_message("Agregando consumos por material mestre (Etapa 2 de 4)", "INFO")
 cat("\n📊 Agregando consumos por material mestre...\n")
 
 # Validar qualidade dos dados antes da agregação
@@ -220,12 +226,18 @@ data_agrupado <- agregar_por_material_mestre(
   coluna_material = "cd_material_final",
   coluna_ano = "ano_competencia",
   coluna_mes = "mes_competencia", 
-  coluna_qt = "qt_consumo"
+  coluna_qt = "qt_consumo",
+  coluna_un = "sg_medida_port"
 )
 
 cat(sprintf("   - Registros após agregação: %s\n", format(nrow(data_agrupado), big.mark = ",")))
-cat(sprintf("   - Redução: %.1f%%\n", 
+cat(sprintf("   -  %.1f%%\n", 
             (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100))
+
+log_message(sprintf("Agregação concluída: %s registros.
+                                         Redução:  %.1f%%",
+                    format(nrow(data_agrupado), big.mark = ","),
+                    (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100), "INFO")
 
 # Estatísticas sobre problemas encontrados
 total_problemas <- data_agrupado %>%
@@ -235,11 +247,42 @@ total_problemas <- data_agrupado %>%
 if(total_problemas > 0) {
   cat(sprintf("⚠️  Total de registros com problemas de conversão: %s\n", 
               format(total_problemas, big.mark = ",")))
+  log_message(sprintf("Registros com problemas: %s", 
+                      format(total_problemas, big.mark = ",")), "WARNING")
 } else {
   cat("✅ Todos os valores foram convertidos com sucesso!\n")
+  log_message("Todos os valores convertidos com sucesso", "INFO")
 }
 
-# 6. ANÁLISE DE QUALIDADE DOS DADOS ####
+### ANÁLISE DAS UNIDADES DE MEDIDAS ####
+
+
+
+#### CONVERSÃO DE UNIDADES ####
+#### AGREGAÇÃO FINAL ####
+
+
+
+
+## ETAPA 2/4: Identificação e tratamento de outliers ####
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# OK Até aqui!! Continuar!!!!! #####
+
+## ETAPA 3/4: validação de consistência ####
+### ANÁLISE DE QUALIDADE DOS DADOS ####
 
 # Identificar inconsistências (consumos negativos ou zero)
 data_inconsistente <- data_agrupado %>% 
