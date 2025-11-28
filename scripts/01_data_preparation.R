@@ -4,6 +4,8 @@
 # Descrição: Este código agrupa SKUs alternados (mesmo PN) como um único
 #            item de consumo para análise de previsão de demanda
 # Data: 2025-08-12
+# Versão: 2.0.0
+# Última atualização: 2025-11-27
 
 # Carregar configurações e bibliotecas ####
 library(here)
