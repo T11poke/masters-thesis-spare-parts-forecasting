@@ -1,12 +1,12 @@
-# masters-thesis-spare-parts-forecasting
+# masters thesis spare-parts forecasting
 
 Comparative study of intermittent demand forecasting methods for air traffic control (ATC) spare parts. Implements 15+ forecasting techniques with empirical validation on ATC systems data. Master's thesis research in logistics and supply chain management.
 
-# Previsão de Demanda para Sobressalentes do SISCEAB
+# Dissertação em Previsão de Demanda de Sobressalentes
 
 **Dissertação de Mestrado em Logística**
 
-Análise comparativa de métodos de previsão de demanda intermitente aplicados ao contexto de sobressalentes eletrônicos e eletromecânicos do Sistema de Controle do Espaço Aéreo Brasileiro (SISCEAB).
+Estudo comparativo de métodos de previsão de demanda intermitente para peças de reposição de controle de tráfego aéreo (ATC). Implementa mais de 15 técnicas de previsão com validação empírica em dados de sistemas ATC. Pesquisa de dissertação de mestrado em logística e gestão da cadeia de suprimentos.
 
 ## 👤 Autor
 
@@ -55,31 +55,10 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 └── logs/                 # Logs de execução
 ```
 
-## 🚀 Como Começar
-
-### 1. Clonar o Repositório
-
-``` bash
-git clone https://github.com/seu-usuario/masters-thesis-spare-parts-forecasting.git
-cd masters-thesis-spare-parts-forecasting
-```
-
-### 2. Abrir Projeto no RStudio
-
--   Abra o arquivo `.Rproj`
--   O renv será ativado automaticamente
-
-### 3. Restaurar Pacotes
-
-``` r
-# Instalar todos os pacotes do projeto
-renv::restore()
-```
-
-### 4. Adicionar Dados
+## 🗃️ Dados
 
 -   Colocar dados do SILOMS em `data/raw/`
--   Estes arquivos não serão versionados (protegidos pelo .gitignore)
+-   Arquivos não serão versionados (protegidos pelo .gitignore)
 
 ## 🔬 Métodos de Previsão
 
@@ -154,4 +133,4 @@ santosdiaslasdr
 
 **Status**: 🚧 Em desenvolvimento\
 **Última atualização**: 2025-11-27\
-**Versão**: 2.0.0
+**Versão**: 2.0.1
