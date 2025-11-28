@@ -261,12 +261,12 @@ if(total_problemas > 0) {
 
 ### ANÁLISE DAS UNIDADES DE MEDIDAS ####
 
-data_com_mestre %>% write_rds(
-  here(config$paths$data$interim, "data_com_mestre.rds")
-  )
-data_agrupado %>% write_rds(
-  here(config$paths$data$interim, "data_agrupado.rds")
-)
+# data_com_mestre %>% write_rds(
+#   here(config$paths$data$interim, "data_com_mestre.rds")
+#   )
+# data_agrupado %>% write_rds(
+#   here(config$paths$data$interim, "data_agrupado.rds")
+# )
 
 # OK Até aqui!! Continuar!!!!! #####
 
@@ -280,14 +280,29 @@ data_agrupado %>% write_rds(
 #' por serem itens não críticos à projetos do SISCEAB (Projeto PV)
 #' 
 
+data_agrupado %<>% filter(cd_material )
 
 
 ##### TRATAMENTO GERAL ####
 #' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
 #' 
 
+materiais_a_eliminar <- c(
+  304030000275, 343060000125
+)
 
+temp_nrow <- nrow(data_agrupado)
+data_agrupado %<>% filter(!cd_material %in% materiais_a_eliminar)
 
+cat(sprintf(
+  "%s registros eliminados manualmente \n Redução: %.1f%%",
+  temp_nrow - nrow(data_agrupado), (1 - nrow(data_agrupado)/temp_nrow) * 100
+  ))
+log_message(sprintf(
+  "Registros eliminados manualmente: %s registros.
+                                                     Redução:  %.1f%%", 
+  temp_nrow - nrow(data_agrupado),(1 - nrow(data_agrupado)/temp_nrow) * 100
+), "INFO")
 
 #### AGREGAÇÃO FINAL ####
 
