@@ -141,13 +141,9 @@ if(!file.exists(arquivo_mestre)) {
         
         cat("\n")
         cat("╔═══════════════════════════════════════════════════════════╗\n")
-        cat("║  AÇÃO OBRIGATÓRIA:                                        ║\n")
-        cat("║  Implementar conversão de unidades ANTES de agregar!     ║\n")
+        cat("║  AÇÃO OBRIGATÓRIA:                                          ║\n")
+        cat("║  Implementar conversão de unidades ANTES de agregar!        ║\n")
         cat("║                                                           ║\n")
-        cat("║  Arquivos disponíveis:                                    ║\n")
-        cat("║  - conversao_unidades.R                                   ║\n")
-        cat("║  - exemplo_analise_unidades.R                             ║\n")
-        cat("║  - GUIA_CONVERSAO_UNIDADES.md                             ║\n")
         cat("╚═══════════════════════════════════════════════════════════╝\n")
         cat("\n")
         
