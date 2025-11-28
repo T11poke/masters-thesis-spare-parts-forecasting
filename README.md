@@ -32,6 +32,10 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 1.  Transformar unidades
 
+    -   15 MATERIAIS MESTRES T�M M�LTIPLAS UNIDADES!
+
+        -   \~/R/masters-thesis-spare-parts-forecasting/output/reports/ALERTA_conflitos_unidades.csv ⚠️
+
 2.  Agrupar alternados com unidades diferentes
 
 3.  Verificar outliers
