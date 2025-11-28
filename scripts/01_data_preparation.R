@@ -175,7 +175,9 @@ cat("\nDistribuição dos grupos de alternados:\n")
 print(grupos_stats)
 
 # 4. APLICAÇÃO DO MAPEAMENTO AOS DADOS DE CONSUMO ####
+# METODOLOGIA: "Remapearam-se registros substituindo código original por código mestre"
 
+log_message("Aplicando mapeamento aos dados de consumo", "INFO")
 cat("\n🔀 Aplicando mapeamento aos dados de consumo...\n")
 
 # Aplicar mapeamento de alternados
@@ -202,6 +204,7 @@ materiais_mapeados <- data_com_mestre %>%
   nrow()
 
 cat(sprintf("   - Materiais afetados pelo mapeamento: %s\n", format(materiais_mapeados, big.mark = ",")))
+log_message(sprintf("Materiais remapeados: %s", format(materiais_mapeados, big.mark = ",")), "INFO")
 
 # 5. AGREGAÇÃO DOS CONSUMOS POR MATERIAL MESTRE ####
 
