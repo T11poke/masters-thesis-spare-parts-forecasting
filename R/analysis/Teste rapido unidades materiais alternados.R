@@ -84,8 +84,6 @@ tryCatch({
   cat("  - Sheet existe?\n\n")
 })
 
-### OK Até aqui!! Continuar!!!!! #####
-
 # =============================================================================
 # TESTE 2: UNIDADES APÓS MAPEAMENTO DE ALTERNADOS (CRÍTICO!)
 # =============================================================================
@@ -94,7 +92,7 @@ cat("🔍 TESTE 2: Análise após mapeamento de alternados\n")
 cat("───────────────────────────────────────────────────────────\n")
 
 # Verificar se já existe o arquivo com mapeamento aplicado
-arquivo_mestre <- here("data", "interim", "data_com_mestre.rds")
+arquivo_mestre <- here("data/interim/data_com_mestre.rds")
 
 if(!file.exists(arquivo_mestre)) {
   cat("⏭️  PULADO: Arquivo 'data_com_mestre.rds' não encontrado\n")

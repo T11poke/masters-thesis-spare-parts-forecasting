@@ -256,9 +256,16 @@ if(total_problemas > 0) {
 
 ### ANÁLISE DAS UNIDADES DE MEDIDAS ####
 
+data_com_mestre %>% write_rds(
+  here(config$paths$data$interim, "data_com_mestre.rds")
+  )
+data_agrupado %>% write_rds(
+  here(config$paths$data$interim, "data_agrupado.rds")
+)
 
 
 #### CONVERSÃO DE UNIDADES ####
+
 #### AGREGAÇÃO FINAL ####
 
 

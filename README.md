@@ -28,6 +28,14 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 -   Conduzir análise comparativa com validação out-of-sample
 -   Propor recomendações metodológicas para o DECEA
 
+## 📋 TO-DO LIST! 🟡
+
+1.  Transformar unidades
+
+2.  Agrupar alternados com unidades diferentes
+
+3.  Verificar outliers
+
 ## 📊 Estrutura do Projeto
 
 ```         
