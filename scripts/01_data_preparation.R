@@ -107,7 +107,11 @@ log_message(sprintf("Duplicatas identificadas: %d", duplicados_alternados),
             if(duplicados_alternados > 0) "WARNING" else "INFO")
 
 # 3. TRATAMENTO DOS DADOS DE ALTERNADOS ####
+# Metodologia: 3.3.2. Tratamento e limpeza dos dados
 
+## 3.1. Primeira etapa ####
+
+log_message("Processando consolidação de materiais alternados (Etapa 1 de 4)", "INFO")
 cat("\n🔄 Processando mapeamento de SKUs alternados...\n")
 
 # Criar arestas para o grafo (eliminar duplicatas A-B e B-A)
@@ -123,14 +127,18 @@ arestas <- data_alternados %>%
   distinct()
 
 cat(sprintf("   - Pares únicos de alternados: %s\n", format(nrow(arestas), big.mark = ",")))
+log_message(sprintf("Pares únicos identificados: %s", format(nrow(arestas), big.mark = ",")), "INFO")
 
 # Criar grafo não direcionado e identificar componentes conectados
+# METODOLOGIA: "Modelou-se a matriz de alternância como grafo não-direcionado"
+log_message("Criando grafo não-direcionado para identificação de componentes", "INFO")
 grafo <- arestas %>% 
   graph_from_data_frame(directed = FALSE)
 
 componentes_info <- components(grafo)
 
 cat(sprintf("   - Grupos de materiais alternados: %d\n", componentes_info$no))
+log_message(sprintf("Componentes conectados identificados: %d", componentes_info$no), "INFO")
 
 # Criar mapeamento material -> ID do componente
 mapa_material_para_id <- data.frame(
@@ -140,6 +148,7 @@ mapa_material_para_id <- data.frame(
 )
 
 # Criar mapeamento ID -> Material mestre (menor CD_MATERIAL do grupo)
+# METODOLOGIA: "Designou-se como código mestre o menor valor numérico de CD_MATERIAL"
 mapa_id_para_grupo <- mapa_material_para_id %>% 
   group_by(id_componente) %>%
   summarise(
@@ -154,6 +163,8 @@ mapa_de_para <- mapa_material_para_id %>%
   select(cd_material_original, cd_mestre, qtd_alternados)
 
 cat(sprintf("   - Materiais com alternados: %s\n", format(nrow(mapa_de_para), big.mark = ",")))
+log_message(sprintf("Mapeamento criado para %s materiais", 
+                    format(nrow(mapa_de_para), big.mark = ",")), "INFO")
 
 # Estatísticas dos grupos
 grupos_stats <- mapa_id_para_grupo %>%
