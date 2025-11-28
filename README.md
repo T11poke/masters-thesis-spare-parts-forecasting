@@ -40,6 +40,8 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 3.  Verificar outliers
 
+4.  
+
 ## 📊 Estrutura do Projeto
 
 ```         
