@@ -268,8 +268,6 @@ if(total_problemas > 0) {
 #   here(config$paths$data$interim, "data_agrupado.rds")
 # )
 
-# OK Até aqui!! Continuar!!!!! #####
-
 #### CONVERSÃO DE UNIDADES ####
 
 ##### TRATAMENTO PERSONALIZADO ####
@@ -278,13 +276,6 @@ if(total_problemas > 0) {
 #' Para alfuns itens, foi decidido a eliminação do estudo, 
 #' por não haver uma relação clara entre as unidades de medida e
 #' por serem itens não críticos à projetos do SISCEAB (Projeto PV)
-#' 
-
-data_agrupado %<>% filter(cd_material )
-
-
-##### TRATAMENTO GERAL ####
-#' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
 #' 
 
 materiais_a_eliminar <- c(
@@ -297,12 +288,21 @@ data_agrupado %<>% filter(!cd_material %in% materiais_a_eliminar)
 cat(sprintf(
   "%s registros eliminados manualmente \n Redução: %.1f%%",
   temp_nrow - nrow(data_agrupado), (1 - nrow(data_agrupado)/temp_nrow) * 100
-  ))
+))
 log_message(sprintf(
   "Registros eliminados manualmente: %s registros.
                                                      Redução:  %.1f%%", 
   temp_nrow - nrow(data_agrupado),(1 - nrow(data_agrupado)/temp_nrow) * 100
 ), "INFO")
+
+# OK Até aqui!! Continuar!!!!! #####
+
+
+##### TRATAMENTO GERAL ####
+#' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
+#' 
+
+
 
 #### AGREGAÇÃO FINAL ####
 
