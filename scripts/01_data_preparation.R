@@ -32,6 +32,9 @@ log_message("========================================", "INFO")
 log_message(sprintf("Seed configurado: %d", config$parameters$seed), "INFO")
 log_message(sprintf("Versão do R: %s", R.version.string), "INFO")
 
+
+
+
 # Configuração para paralelização
 if(config$computation$parallel) {
   plan(multisession, workers = config$computation$n_cores)
@@ -40,6 +43,8 @@ if(config$computation$parallel) {
   plan(sequential)
   log_message("Modo sequencial ativado", "INFO")
 }
+
+# plan(sequential)
 
 # 1. CARREGAMENTO DOS DADOS ####
 
@@ -263,8 +268,26 @@ data_agrupado %>% write_rds(
   here(config$paths$data$interim, "data_agrupado.rds")
 )
 
+# OK Até aqui!! Continuar!!!!! #####
 
 #### CONVERSÃO DE UNIDADES ####
+
+##### TRATAMENTO PERSONALIZADO ####
+#' Considerando o número reduzido de itens problemáticos,
+#' foi possível realizar análise item a item.
+#' Para alfuns itens, foi decidido a eliminação do estudo, 
+#' por não haver uma relação clara entre as unidades de medida e
+#' por serem itens não críticos à projetos do SISCEAB (Projeto PV)
+#' 
+
+
+
+##### TRATAMENTO GERAL ####
+#' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
+#' 
+
+
+
 
 #### AGREGAÇÃO FINAL ####
 
@@ -286,7 +309,7 @@ data_agrupado %>% write_rds(
 
 
 
-# OK Até aqui!! Continuar!!!!! #####
+
 
 ## ETAPA 3/4: validação de consistência ####
 ### ANÁLISE DE QUALIDADE DOS DADOS ####
@@ -360,3 +383,4 @@ cat("Próximo passo: Execute o script 02_exploratory_analysis.R\n")
 
 # Limpeza do ambiente (opcional)
 rm(list = setdiff(ls(), c("data_final")))
+
