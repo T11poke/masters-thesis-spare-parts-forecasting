@@ -44,17 +44,26 @@ if(config$computation$parallel) {
 # 1. CARREGAMENTO DOS DADOS ####
 
 cat("📁 Carregando dados brutos...\n")
+log_message("Carregando dados brutos do SILOMS", "INFO")
 
 # Carregar dados de consumo
+arquivo_consumo <- here(config$paths$data$raw, 
+                        config$data$files$consumo)
+log_message(sprintf("Lendo arquivo: %s", basename(arquivo_consumo)), "INFO")
+
 data_consumo <- read_excel(
-  here("data", "raw", "dados_consumo_santos_dias-17-06-25.xlsx"),
+  arquivo_consumo,
   sheet = "Select t_historico_consumo_proj"
 ) %>% 
   clean_names()
 
 # Carregar dados de alternados
+arquivo_alternados <- here(config$paths$data$raw, 
+                           config$data$files$alternados)
+log_message(sprintf("Lendo arquivo: %s", basename(arquivo_alternados)), "INFO")
+
 data_alternados <- read_excel(
-  here("data", "raw", "dados_alternados_santos_dias-18-06-25.xlsx"),
+  arquivo_alternados,
   sheet = "Select t_alternado"
 ) %>%
   clean_names() %>%
@@ -64,8 +73,18 @@ cat("✅ Dados carregados:\n")
 cat(sprintf("   - Registros de consumo: %s\n", format(nrow(data_consumo), big.mark = ",")))
 cat(sprintf("   - Registros de alternados: %s\n", format(nrow(data_alternados), big.mark = ",")))
 
-# 2. ANÁLISE EXPLORATÓRIA INICIAL ####
+log_message(sprintf("Registros de consumo: %s", 
+                    format(nrow(data_consumo), big.mark = ",")), "INFO")
+log_message(sprintf("Registros de alternados: %s", 
+                    format(nrow(data_alternados), big.mark = ",")), "INFO")
 
+# 2. ANÁLISE EXPLORATÓRIA INICIAL ####
+#' Nota metodológica:
+#' Esta análise é sobre os dados brutos, para uma verificação inicial do dataset
+#' antes da divisão temporal. Não há risco de data leakage, pois essa análise
+#' não será utilizada posteriormente no pipeline.
+
+log_message("Executando análise exploratória inicial", "INFO")
 cat("\n📋 Análise exploratória dos dados brutos...\n")
 
 # Visão geral dos dados
@@ -84,6 +103,8 @@ duplicados_alternados <- data_alternados %>%
   sum()
 
 cat(sprintf("\nDuplicatas em alternados: %d\n", duplicados_alternados))
+log_message(sprintf("Duplicatas identificadas: %d", duplicados_alternados), 
+            if(duplicados_alternados > 0) "WARNING" else "INFO")
 
 # 3. TRATAMENTO DOS DADOS DE ALTERNADOS ####
 
