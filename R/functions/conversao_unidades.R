@@ -217,48 +217,48 @@ analisar_unidades_pos_agregacao <- function(data,
 #' 
 #' # Ver conversões disponíveis
 #' View(tabela_conv)
-criar_tabela_conversao <- function() {
-  
-  # TEMPLATE: Personalize com suas conversões específicas
-  # Estas são apenas EXEMPLOS - você deve preencher com regras reais
-  
-  tabela_conversao <- tribble(
-    ~unidade_origem, ~unidade_destino, ~fator_conversao, ~formula, ~categoria,
-    
-    # COMPRIMENTO
-    "M",   "CM",  100,     "1 metro = 100 centímetros",           "comprimento",
-    "CM",  "M",   0.01,    "1 centímetro = 0.01 metros",          "comprimento",
-    "KM",  "M",   1000,    "1 quilômetro = 1000 metros",          "comprimento",
-    
-    # MASSA
-    "KG",  "G",   1000,    "1 quilograma = 1000 gramas",          "massa",
-    "G",   "KG",  0.001,   "1 grama = 0.001 quilogramas",         "massa",
-    "TON", "KG",  1000,    "1 tonelada = 1000 quilogramas",       "massa",
-    
-    # VOLUME
-    "L",   "ML",  1000,    "1 litro = 1000 mililitros",           "volume",
-    "ML",  "L",   0.001,   "1 mililitro = 0.001 litros",          "volume",
-    "M3",  "L",   1000,    "1 metro cúbico = 1000 litros",        "volume",
-    
-    # ÁREA
-    "M2",  "CM2", 10000,   "1 m² = 10000 cm²",                    "area",
-    
-    # QUANTIDADE (casos especiais)
-    "DZ",  "UN",  12,      "1 dúzia = 12 unidades",               "quantidade",
-    "CX",  "UN",  NA,      "Caixa - requer info do fabricante",   "quantidade",
-    "PC",  "UN",  1,       "Peça = Unidade",                      "quantidade",
-    "PAR", "UN",  2,       "1 par = 2 unidades",                  "quantidade",
-    "JG",  "UN",  NA,      "Jogo - requer info do fabricante",    "quantidade",
-    
-    # ELÉTRICA
-    "KW",  "W",   1000,    "1 quilowatt = 1000 watts",            "eletrica",
-    
-    # CONVERSÕES ESPECÍFICAS (adicionar conforme necessário)
-    # Adicione aqui conversões específicas do seu domínio
-  )
-  
-  return(tabela_conversao)
-}
+# criar_tabela_conversao <- function() {
+#   
+#   # TEMPLATE: Personalize com suas conversões específicas
+#   # Estas são apenas EXEMPLOS - você deve preencher com regras reais
+#   
+#   tabela_conversao <- tribble(
+#     ~unidade_origem, ~unidade_destino, ~fator_conversao, ~formula, ~categoria,
+#     
+#     # COMPRIMENTO
+#     "M",   "CM",  100,     "1 metro = 100 centímetros",           "comprimento",
+#     "CM",  "M",   0.01,    "1 centímetro = 0.01 metros",          "comprimento",
+#     "KM",  "M",   1000,    "1 quilômetro = 1000 metros",          "comprimento",
+#     
+#     # MASSA
+#     "KG",  "G",   1000,    "1 quilograma = 1000 gramas",          "massa",
+#     "G",   "KG",  0.001,   "1 grama = 0.001 quilogramas",         "massa",
+#     "TON", "KG",  1000,    "1 tonelada = 1000 quilogramas",       "massa",
+#     
+#     # VOLUME
+#     "L",   "ML",  1000,    "1 litro = 1000 mililitros",           "volume",
+#     "ML",  "L",   0.001,   "1 mililitro = 0.001 litros",          "volume",
+#     "M3",  "L",   1000,    "1 metro cúbico = 1000 litros",        "volume",
+#     
+#     # ÁREA
+#     "M2",  "CM2", 10000,   "1 m² = 10000 cm²",                    "area",
+#     
+#     # QUANTIDADE (casos especiais)
+#     "DZ",  "UN",  12,      "1 dúzia = 12 unidades",               "quantidade",
+#     "CX",  "UN",  NA,      "Caixa - requer info do fabricante",   "quantidade",
+#     "PC",  "UN",  1,       "Peça = Unidade",                      "quantidade",
+#     "PAR", "UN",  2,       "1 par = 2 unidades",                  "quantidade",
+#     "JG",  "UN",  NA,      "Jogo - requer info do fabricante",    "quantidade",
+#     
+#     # ELÉTRICA
+#     "KW",  "W",   1000,    "1 quilowatt = 1000 watts",            "eletrica",
+#     
+#     # CONVERSÕES ESPECÍFICAS (adicionar conforme necessário)
+#     # Adicione aqui conversões específicas do seu domínio
+#   )
+#   
+#   return(tabela_conversao)
+# }
 
 
 #' Identifica regras de conversão necessárias
