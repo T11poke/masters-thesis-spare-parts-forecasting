@@ -16,7 +16,6 @@
 #' @param data dataframe com dados de consumo
 #' @param coluna_material nome da coluna de material
 #' @param coluna_unidade nome da coluna de unidade (default: "sg_medida_port")
-#' @param coluna_descricao nome da coluna com descrição da unidade (default: "ds_medida_port")
 #' @return lista com análise completa
 #' 
 #' @examples
@@ -24,8 +23,7 @@
 #' View(analise$materiais_multiplas_unidades)
 analisar_unidades_medida <- function(data,
                                      coluna_material = "cd_material",
-                                     coluna_unidade = "sg_medida_port",
-                                     coluna_descricao = "ds_medida_port") {
+                                     coluna_unidade = "sg_medida_port") {
   
   cat("\n🔍 ANÁLISE DE UNIDADES DE MEDIDA\n")
   cat("==========================================\n")
@@ -39,20 +37,15 @@ analisar_unidades_medida <- function(data,
   cat("\n📊 Estatísticas Gerais:\n")
   
   unidades_unicas <- data %>%
-    distinct(.data[[coluna_unidade]], 
-             if(coluna_descricao %in% names(data)) .data[[coluna_descricao]]) %>%
+    distinct(.data[[coluna_unidade]]) %>%
     arrange(.data[[coluna_unidade]])
   
   cat(sprintf("   - Total de unidades únicas: %d\n", nrow(unidades_unicas)))
   
   # Mostrar todas as unidades
   cat("\n📋 Unidades encontradas:\n")
-  if(coluna_descricao %in% names(data)) {
-    print(unidades_unicas, n = Inf)
-  } else {
-    cat(paste(unidades_unicas[[coluna_unidade]], collapse = ", "))
-    cat("\n")
-  }
+  cat(paste(unidades_unicas[[coluna_unidade]], collapse = ", "))
+  cat("\n")
   
   # 2. Distribuição de registros por unidade
   cat("\n📈 Distribuição de registros por unidade:\n")
