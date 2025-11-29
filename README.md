@@ -37,7 +37,7 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
         -   \~/R/masters-thesis-spare-parts-forecasting/output/reports/ALERTA_conflitos_unidades.csv
 
             |  |  |  |  |  |  |
-            |------:|:--------------:|:----------:|:----------:|:----------:|:------------------:|
+            |-----------:|:----------:|:----------:|:----------:|:----------:|:----------:|
             |  | **cd_material_final** | **n_unidades** | **unidades** | **n_registros** | **Implementação** |
             | 1 | 298100000053 | 3 | CJ \| UN \| KT | 31 | CJ = UN = KT |
             | 2 | 307050000726 | 3 | UN \| m \| PE | 10 | UN = m = PE/0.3048 |
@@ -60,6 +60,28 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 3.  Verificar outliers
 
 4.  
+
+## ▶️Script Pipeline
+
+00_setup_project.R
+
+-   Automatiza a inicialização do repositório do projeto.
+
+01_data_preparation.R
+
+-   Carrega os dados brutos necessários e faz o tratamento inicial de verificação da base conforme metodologia estabelecida no trabalho.
+
+02_train_test_split.R
+
+03_exploratory_analysis.R
+
+04a_baseline_models_forecast.R
+
+04b_adida_models_forecast.R
+
+05_analyze_results.R
+
+06_advanced_error_visualization.R
 
 ## 📊 Estrutura do Projeto
 
