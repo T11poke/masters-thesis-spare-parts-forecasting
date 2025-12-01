@@ -278,6 +278,15 @@ if(total_problemas > 0) {
 #' por serem itens não críticos à projetos do SISCEAB (Projeto PV)
 #' 
 
+source(here("R", "functions", "conversao_unidades.R"))
+
+# Identificar conflitos de unidades
+conflitos_unidade <- analisar_unidades_pos_agregacao(
+  data = data_com_mestre,
+  coluna_material = "cd_material_final",
+  coluna_unidade = "sg_medida_port"
+)
+
 materiais_a_eliminar <- c(
   304030000275, 343060000125
 )
@@ -295,12 +304,52 @@ log_message(sprintf(
   temp_nrow - nrow(data_agrupado),(1 - nrow(data_agrupado)/temp_nrow) * 100
 ), "INFO")
 
-# OK Até aqui!! Continuar!!!!! #####
-
-
 ##### TRATAMENTO GERAL ####
 #' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
 #' 
+
+tabela_conversao <- read_excel(
+  here(config$paths$data$external, "tabela_conversao.xlsx"),
+  sheet = "Planilha1"
+) %>% 
+  clean_names()
+
+# Determinar unidade base para cada material (mais frequente)
+unidade_base_por_material <- data_com_mestre %>%
+  group_by(cd_material_final, sg_medida_port) %>%
+  summarise(n = n(), .groups = 'drop_last') %>%
+  slice_max(n, n = 1, with_ties = FALSE) %>%
+  select(cd_material_final, unidade_base = sg_medida_port)
+
+# OK Até aqui!! Continuar!!!!! #####
+
+# Aplicar conversões
+data_com_mestre <- aplicar_conversao_unidades(
+  data = data_com_mestre,
+  tabela_conversao = tabela_conversao,
+  unidade_base_por_material = unidade_base_por_material,
+  coluna_material = "cd_material_final",
+  coluna_unidade = "sg_medida_port",
+  coluna_quantidade = "qt_consumo"
+)
+
+
+
+
+
+
+# Identificar conversões necessárias
+analise_conversoes <- identificar_conversoes_necessarias(
+  conflitos_unidade = conflitos_unidade,
+  data = data_com_mestre,
+  coluna_material = "cd_material_final",
+  coluna_unidade = "sg_medida_port"
+)
+
+
+
+
+
 
 
 
