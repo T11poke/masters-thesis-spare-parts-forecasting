@@ -164,30 +164,30 @@ analisar_unidades_pos_agregacao <- function(data,
     cat("   Casos mais críticos:\n")
     print(head(conflitos_unidade, 10))
     
-    # Análise detalhada dos 3 piores casos
-    cat("\n📋 Análise detalhada dos 3 casos mais complexos:\n\n")
-    
-    for(i in 1:min(3, nrow(conflitos_unidade))) {
-      material_id <- conflitos_unidade[[coluna_material]][i]
-      
-      cat(sprintf("\nCaso %d - Material Mestre: %s\n", i, material_id))
-      cat(sprintf("Unidades envolvidas: %s\n", conflitos_unidade$unidades[i]))
-      
-      detalhe <- data %>%
-        filter(.data[[coluna_material]] == material_id) %>%
-        group_by(.data[[coluna_unidade]]) %>%
-        summarise(
-          n_registros = n(),
-          qt_total = sum(qt_consumo, na.rm = TRUE),
-          qt_media = mean(qt_consumo, na.rm = TRUE),
-          periodo_min = sprintf("%02d/%d", min(mes_competencia), min(ano_competencia)),
-          periodo_max = sprintf("%02d/%d", max(mes_competencia), max(ano_competencia)),
-          .groups = 'drop'
-        ) %>%
-        mutate(proporcao = n_registros / sum(n_registros) * 100)
-      
-      print(detalhe)
-    }
+    # # Análise detalhada dos 3 piores casos
+    # cat("\n📋 Análise detalhada dos 3 casos mais complexos:\n\n")
+    # 
+    # for(i in 1:min(3, nrow(conflitos_unidade))) {
+    #   material_id <- conflitos_unidade[[coluna_material]][i]
+    #   
+    #   cat(sprintf("\nCaso %d - Material Mestre: %s\n", i, material_id))
+    #   cat(sprintf("Unidades envolvidas: %s\n", conflitos_unidade$unidades[i]))
+    #   
+    #   detalhe <- data %>%
+    #     filter(.data[[coluna_material]] == material_id) %>%
+    #     group_by(.data[[coluna_unidade]]) %>%
+    #     summarise(
+    #       n_registros = n(),
+    #       qt_total = sum(qt_consumo, na.rm = TRUE),
+    #       qt_media = mean(qt_consumo, na.rm = TRUE),
+    #       periodo_min = sprintf("%02d/%d", min(mes_competencia), min(ano_competencia)),
+    #       periodo_max = sprintf("%02d/%d", max(mes_competencia), max(ano_competencia)),
+    #       .groups = 'drop'
+    #     ) %>%
+    #     mutate(proporcao = n_registros / sum(n_registros) * 100)
+    #   
+    #   print(detalhe)
+    # }
     
   } else {
     cat("   ✅ Perfeito! Todos os materiais mestres têm unidade única.\n")
@@ -261,89 +261,89 @@ analisar_unidades_pos_agregacao <- function(data,
 # }
 
 
-#' Identifica regras de conversão necessárias
-#' 
-#' Analisa os conflitos de unidade e sugere quais conversões implementar
-#' 
-#' @param conflitos_unidade dataframe retornado por analisar_unidades_pos_agregacao
-#' @param data dataframe completo para análise detalhada
-#' @param coluna_material nome da coluna de material
-#' @param coluna_unidade nome da coluna de unidade
-#' @return dataframe com regras sugeridas
-identificar_conversoes_necessarias <- function(conflitos_unidade,
-                                               data,
-                                               coluna_material = "cd_material_final",
-                                               coluna_unidade = "sg_medida_port") {
-  
-  cat("\n🔧 IDENTIFICAÇÃO DE CONVERSÕES NECESSÁRIAS\n")
-  cat("==========================================\n")
-  
-  if(nrow(conflitos_unidade) == 0) {
-    cat("✅ Nenhuma conversão necessária.\n")
-    return(NULL)
-  }
-  
-  # Para cada material com conflito, identificar qual deve ser a unidade base
-  # (geralmente a mais frequente)
-  
-  regras_sugeridas <- conflitos_unidade %>%
-    rowwise() %>%
-    mutate(
-      analise_detalhada = list({
-        data %>%
-          filter(.data[[coluna_material]] == .data[[coluna_material]]) %>%
-          group_by(.data[[coluna_unidade]]) %>%
-          summarise(
-            n_ocorrencias = n(),
-            qt_total = sum(qt_consumo, na.rm = TRUE),
-            .groups = 'drop'
-          ) %>%
-          arrange(desc(n_ocorrencias)) %>%
-          mutate(
-            unidade_sugerida = first(.data[[coluna_unidade]]),
-            deve_converter = .data[[coluna_unidade]] != unidade_sugerida
-          )
-      })
-    ) %>%
-    ungroup()
-  
-  cat(sprintf("\n📋 Total de materiais com conflito: %d\n", nrow(regras_sugeridas)))
-  cat("\nPara cada material, a unidade mais frequente foi selecionada como base.\n")
-  cat("As demais unidades deverão ser convertidas.\n\n")
-  
-  # Extrair todas as conversões únicas necessárias
-  conversoes_unicas <- regras_sugeridas %>%
-    select(cd_material_final, analise_detalhada) %>%
-    unnest(analise_detalhada) %>%
-    filter(deve_converter) %>%
-    select(
-      cd_material_final,
-      unidade_origem = sg_medida_port,
-      unidade_destino = unidade_sugerida,
-      n_ocorrencias,
-      qt_total
-    ) %>%
-    group_by(unidade_origem, unidade_destino) %>%
-    summarise(
-      n_materiais_afetados = n(),
-      n_registros_total = sum(n_ocorrencias),
-      qt_total_afetada = sum(qt_total),
-      materiais = paste(cd_material_final, collapse = ", "),
-      .groups = 'drop'
-    ) %>%
-    arrange(desc(n_materiais_afetados))
-  
-  cat("🎯 Conversões únicas necessárias:\n\n")
-  print(conversoes_unicas, n = Inf)
-  
-  # Salvar para referência
-  cat("\n💾 Salvando análise detalhada...\n")
-  
-  return(list(
-    regras_por_material = regras_sugeridas,
-    conversoes_necessarias = conversoes_unicas
-  ))
-}
+#' #' Identifica regras de conversão necessárias
+#' #' 
+#' #' Analisa os conflitos de unidade e sugere quais conversões implementar
+#' #' 
+#' #' @param conflitos_unidade dataframe retornado por analisar_unidades_pos_agregacao
+#' #' @param data dataframe completo para análise detalhada
+#' #' @param coluna_material nome da coluna de material
+#' #' @param coluna_unidade nome da coluna de unidade
+#' #' @return dataframe com regras sugeridas
+#' identificar_conversoes_necessarias <- function(conflitos_unidade,
+#'                                                data,
+#'                                                coluna_material = "cd_material_final",
+#'                                                coluna_unidade = "sg_medida_port") {
+#'   
+#'   cat("\n🔧 IDENTIFICAÇÃO DE CONVERSÕES NECESSÁRIAS\n")
+#'   cat("==========================================\n")
+#'   
+#'   if(nrow(conflitos_unidade) == 0) {
+#'     cat("✅ Nenhuma conversão necessária.\n")
+#'     return(NULL)
+#'   }
+#'   
+#'   # Para cada material com conflito, identificar qual deve ser a unidade base
+#'   # (geralmente a mais frequente)
+#'   
+#'   regras_sugeridas <- conflitos_unidade %>%
+#'     rowwise() %>%
+#'     mutate(
+#'       analise_detalhada = list({
+#'         data %>%
+#'           filter(.data[[coluna_material]] == .data[[coluna_material]]) %>%
+#'           group_by(.data[[coluna_unidade]]) %>%
+#'           summarise(
+#'             n_ocorrencias = n(),
+#'             qt_total = sum(qt_consumo, na.rm = TRUE),
+#'             .groups = 'drop'
+#'           ) %>%
+#'           arrange(desc(n_ocorrencias)) %>%
+#'           mutate(
+#'             unidade_sugerida = first(.data[[coluna_unidade]]),
+#'             deve_converter = .data[[coluna_unidade]] != unidade_sugerida
+#'           )
+#'       })
+#'     ) %>%
+#'     ungroup()
+#'   
+#'   cat(sprintf("\n📋 Total de materiais com conflito: %d\n", nrow(regras_sugeridas)))
+#'   cat("\nPara cada material, a unidade mais frequente foi selecionada como base.\n")
+#'   cat("As demais unidades deverão ser convertidas.\n\n")
+#'   
+#'   # Extrair todas as conversões únicas necessárias
+#'   conversoes_unicas <- regras_sugeridas %>%
+#'     select(cd_material_final, analise_detalhada) %>%
+#'     unnest(analise_detalhada) %>%
+#'     filter(deve_converter) %>%
+#'     select(
+#'       cd_material_final,
+#'       unidade_origem = sg_medida_port,
+#'       unidade_destino = unidade_sugerida,
+#'       n_ocorrencias,
+#'       qt_total
+#'     ) %>%
+#'     group_by(unidade_origem, unidade_destino) %>%
+#'     summarise(
+#'       n_materiais_afetados = n(),
+#'       n_registros_total = sum(n_ocorrencias),
+#'       qt_total_afetada = sum(qt_total),
+#'       materiais = paste(cd_material_final, collapse = ", "),
+#'       .groups = 'drop'
+#'     ) %>%
+#'     arrange(desc(n_materiais_afetados))
+#'   
+#'   cat("🎯 Conversões únicas necessárias:\n\n")
+#'   print(conversoes_unicas, n = Inf)
+#'   
+#'   # Salvar para referência
+#'   cat("\n💾 Salvando análise detalhada...\n")
+#'   
+#'   return(list(
+#'     regras_por_material = regras_sugeridas,
+#'     conversoes_necessarias = conversoes_unicas
+#'   ))
+#' }
 
 
 #' Aplica conversão de unidades
