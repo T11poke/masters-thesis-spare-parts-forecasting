@@ -308,8 +308,23 @@ conflitos_unidade <- analisar_unidades_pos_agregacao(
 
 #### AGREGAÇÃO FINAL ####
 
+data_agrupado <- agregar_por_material_mestre(
+  data = data_com_mestre_tratada,
+  coluna_material = "cd_material_final",
+  coluna_ano = "ano_competencia",
+  coluna_mes = "mes_competencia", 
+  coluna_qt = "qt_consumo",
+  coluna_un = "sg_medida_port"
+)
 
+cat(sprintf("   - Registros após agregação: %s\n", format(nrow(data_agrupado), big.mark = ",")))
+cat(sprintf("   -  %.1f%%\n", 
+            (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100))
 
+log_message(sprintf("Agregação concluída: %s registros.
+                                         Redução:  %.1f%%",
+                    format(nrow(data_agrupado), big.mark = ","),
+                    (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100), "INFO")
 
 ## ETAPA 2/4: Identificação e tratamento de outliers ####
 
