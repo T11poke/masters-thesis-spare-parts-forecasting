@@ -32,9 +32,6 @@ log_message("========================================", "INFO")
 log_message(sprintf("Seed configurado: %d", config$parameters$seed), "INFO")
 log_message(sprintf("Versão do R: %s", R.version.string), "INFO")
 
-
-
-
 # Configuração para paralelização
 if(config$computation$parallel) {
   plan(multisession, workers = config$computation$n_cores)
@@ -120,6 +117,43 @@ log_message(sprintf("Duplicatas identificadas: %d", duplicados_alternados),
 #' Terceira etapa: transformações para séries temporais completas
 
 ## ETAPA 1/3: validação de consistência ####
+### ANÁLISE DE QUALIDADE DOS DADOS ####
+
+# Identificar inconsistências (consumos negativos ou zero)
+data_inconsistente <- data_consumo %>% 
+  filter(qt_consumo <= 0)
+
+if(nrow(data_inconsistente) > 0) {
+  log_message(
+    sprintf(
+      "Foram encontratos %s Registros inconsistentes (≤0):",
+      format(nrow(data_inconsistente), big.mark = ",")
+    ),"WARNING"
+  )
+  log_message(sprintf(
+    "Os registros inconsistentes representam %.1f%% do total",
+    (nrow(data_inconsistente)/nrow(data_consumo)) * 100),
+    "INFO"
+  )
+  cat("Salvando registros inconsistentes...\n")
+  write_xlsx(
+    data_inconsistente, 
+    here(config$paths$data$processed, "inconsistencias_consumo_negativo.xlsx")
+  )
+  log_message(sprintf(
+    "Os registros inconsistentes foram salvos como inconsistencias_consumo_negativo.xlsx"
+  ),
+  "INFO"
+  )
+}
+
+# Filtrar apenas consumos positivos
+data_consumo %<>% 
+  filter(qt_consumo > 0)
+
+# Resumo estatístico
+cat("\n📈 Resumo estatístico dos dados de consumo limpos:\n")
+data_consumo %$% skim(qt_consumo)
 
 ## ETAPA 2/3: Compilação de alternados ####
 
@@ -280,6 +314,9 @@ conflitos_unidade <- analisar_unidades_pos_agregacao(
 data_com_mestre %>% write_xlsx(here(config$paths$data$interim, "data_com_mestre.xlsx"))
 conflitos_unidade %>% write_xlsx(here(config$paths$output$reports, "problemas_unidade.xlsx"))
 
+##### COntinuar aqui!!!! ############
+
+
 data_com_mestre_tratada <- read_excel(
   here(config$paths$data$interim, "data_com_mestre2.xlsx"),
   sheet = "Sheet1"
@@ -330,32 +367,7 @@ log_message(sprintf("Agregação concluída: %s registros.
                     (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100), "INFO")
 
 
-### ANÁLISE DE QUALIDADE DOS DADOS ####
 
-# Identificar inconsistências (consumos negativos ou zero)
-data_inconsistente <- data_agrupado %>% 
-  filter(qt_total <= 0)
-
-cat(sprintf("   - Registros inconsistentes (≤0): %s\n", format(nrow(data_inconsistente), big.mark = ",")))
-
-if(nrow(data_inconsistente) > 0) {
-  cat("Salvando registros inconsistentes...\n")
-  write_xlsx(
-    data_inconsistente, 
-    here(config$paths$data$processed, "inconsistencias_consumo_negativo.xlsx")
-  )
-}
-
-# Filtrar apenas consumos positivos
-data_final <- data_agrupado %>% 
-  filter(qt_total > 0)
-
-cat(sprintf("   - Registros finais válidos: %s\n", format(nrow(data_final), big.mark = ",")))
-
-# Resumo estatístico final
-cat("\n📈 Resumo estatístico dos dados finais:\n")
-skim(data_final)
-data_final %$% skim(qt_total)
 
 # 7. SALVAMENTO DOS RESULTADOS ####
 
