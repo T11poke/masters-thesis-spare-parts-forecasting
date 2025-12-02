@@ -261,24 +261,7 @@ if(total_problemas > 0) {
 
 ### ANÁLISE DAS UNIDADES DE MEDIDAS ####
 
-# data_com_mestre %>% write_rds(
-#   here(config$paths$data$interim, "data_com_mestre.rds")
-#   )
-# data_agrupado %>% write_rds(
-#   here(config$paths$data$interim, "data_agrupado.rds")
-# )
-
-#### CONVERSÃO DE UNIDADES ####
-
-##### TRATAMENTO PERSONALIZADO ####
-#' Considerando o número reduzido de itens problemáticos,
-#' foi possível realizar análise item a item.
-#' Para alfuns itens, foi decidido a eliminação do estudo, 
-#' por não haver uma relação clara entre as unidades de medida e
-#' por serem itens não críticos à projetos do SISCEAB (Projeto PV)
-#' 
-
-source(here("R", "functions", "conversao_unidades.R"))
+source(here("R/functions/analise_unidades_medida.R"))
 
 # Identificar conflitos de unidades
 conflitos_unidade <- analisar_unidades_pos_agregacao(
@@ -287,76 +270,41 @@ conflitos_unidade <- analisar_unidades_pos_agregacao(
   coluna_unidade = "sg_medida_port"
 )
 
+#' foram encontrados somente 15 inconsistências. Dado o volume, decidi tratar manualmente.
+#' Apenas 2 materiais eu não conseguir acertar a conversão com a equipe técnica.
+#' Optei então por tirar eles da análise, conforme eliminação a seguir.
+
 data_com_mestre %>% write_xlsx(here(config$paths$data$interim, "data_com_mestre.xlsx"))
+conflitos_unidade %>% write_xlsx(here(config$paths$output$reports, "problemas_unidade.xlsx"))
 
-%>% write_xlsx(here(config$paths$output$reports, "data_problema_unidade.xlsx"))
+data_com_mestre_tratada <- read_excel(
+  here(config$paths$data$interim, "data_com_mestre2.xlsx"),
+  sheet = "Sheet1"
+) %>% clean_names()
 
-
-# materiais_a_eliminar <- c(
-#   304030000275, 343060000125
-# )
-
-# temp_nrow <- nrow(data_agrupado)
-# data_agrupado %<>% filter(!cd_material %in% materiais_a_eliminar)
-
-# cat(sprintf(
-#   "%s registros eliminados manualmente \n Redução: %.1f%%",
-#   temp_nrow - nrow(data_agrupado), (1 - nrow(data_agrupado)/temp_nrow) * 100
-# ))
-# log_message(sprintf(
-#   "Registros eliminados manualmente: %s registros.
-#                                                      Redução:  %.1f%%", 
-#   temp_nrow - nrow(data_agrupado),(1 - nrow(data_agrupado)/temp_nrow) * 100
-# ), "INFO")
-
-##### TRATAMENTO GERAL ####
-#' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
-#' 
-# 
-# tabela_conversao <- read_excel(
-#   here(config$paths$data$external, "tabela_conversao.xlsx"),
-#   sheet = "Planilha1"
-# ) %>% 
-#   clean_names()
-# 
-# # Determinar unidade base para cada material (mais frequente)
-# unidade_base_por_material <- data_com_mestre %>%
-#   group_by(cd_material_final, sg_medida_port) %>%
-#   summarise(n = n(), .groups = 'drop_last') %>%
-#   slice_max(n, n = 1, with_ties = FALSE) %>%
-#   select(cd_material_final, unidade_base = sg_medida_port)
-
-# OK Até aqui!! Continuar!!!!! #####
-
-# Aplicar conversões
-data_com_mestre <- aplicar_conversao_unidades(
-  data = data_com_mestre,
-  tabela_conversao = tabela_conversao,
-  unidade_base_por_material = unidade_base_por_material,
-  coluna_material = "cd_material_final",
-  coluna_unidade = "sg_medida_port",
-  coluna_quantidade = "qt_consumo"
+materiais_a_eliminar <- c(
+  304030000275,
+  343060000125
 )
 
+temp_nrow <- nrow(data_com_mestre_tratada)
+data_com_mestre_tratada %<>% filter(!cd_material_final %in% materiais_a_eliminar)
 
+cat(sprintf(
+  "%s registros eliminados manualmente \n Redução: %.1f%%",
+  temp_nrow - nrow(data_com_mestre), (1 - nrow(data_com_mestre)/temp_nrow) * 100
+))
+log_message(sprintf(
+  "Registros eliminados manualmente: %s registros.
+                                                     Redução:  %.1f%%",
+  temp_nrow - nrow(data_com_mestre),(1 - nrow(data_com_mestre)/temp_nrow) * 100
+), "INFO")  
 
-
-
-
-# Identificar conversões necessárias
-analise_conversoes <- identificar_conversoes_necessarias(
-  conflitos_unidade = conflitos_unidade,
-  data = data_com_mestre,
+conflitos_unidade <- analisar_unidades_pos_agregacao(
+  data = data_com_mestre_tratada,
   coluna_material = "cd_material_final",
   coluna_unidade = "sg_medida_port"
 )
-
-
-
-
-
-
-
 
 #### AGREGAÇÃO FINAL ####
 
