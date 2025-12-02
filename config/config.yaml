@@ -68,7 +68,7 @@ parameters:
     discontinuity_months: 36  # Meses sem demanda para considerar descontinuado  
 
 computation:
-  parallel: false
+  parallel: true
   n_cores: 8
 
 output:
