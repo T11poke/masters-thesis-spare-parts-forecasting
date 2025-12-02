@@ -287,39 +287,44 @@ conflitos_unidade <- analisar_unidades_pos_agregacao(
   coluna_unidade = "sg_medida_port"
 )
 
-materiais_a_eliminar <- c(
-  304030000275, 343060000125
-)
+data_com_mestre %>% write_xlsx(here(config$paths$data$interim, "data_com_mestre.xlsx"))
 
-temp_nrow <- nrow(data_agrupado)
-data_agrupado %<>% filter(!cd_material %in% materiais_a_eliminar)
+%>% write_xlsx(here(config$paths$output$reports, "data_problema_unidade.xlsx"))
 
-cat(sprintf(
-  "%s registros eliminados manualmente \n Redução: %.1f%%",
-  temp_nrow - nrow(data_agrupado), (1 - nrow(data_agrupado)/temp_nrow) * 100
-))
-log_message(sprintf(
-  "Registros eliminados manualmente: %s registros.
-                                                     Redução:  %.1f%%", 
-  temp_nrow - nrow(data_agrupado),(1 - nrow(data_agrupado)/temp_nrow) * 100
-), "INFO")
+
+# materiais_a_eliminar <- c(
+#   304030000275, 343060000125
+# )
+
+# temp_nrow <- nrow(data_agrupado)
+# data_agrupado %<>% filter(!cd_material %in% materiais_a_eliminar)
+
+# cat(sprintf(
+#   "%s registros eliminados manualmente \n Redução: %.1f%%",
+#   temp_nrow - nrow(data_agrupado), (1 - nrow(data_agrupado)/temp_nrow) * 100
+# ))
+# log_message(sprintf(
+#   "Registros eliminados manualmente: %s registros.
+#                                                      Redução:  %.1f%%", 
+#   temp_nrow - nrow(data_agrupado),(1 - nrow(data_agrupado)/temp_nrow) * 100
+# ), "INFO")
 
 ##### TRATAMENTO GERAL ####
 #' Para os casos remanescentes, foi aplicada uma tabela de conversão de unidades.
 #' 
-
-tabela_conversao <- read_excel(
-  here(config$paths$data$external, "tabela_conversao.xlsx"),
-  sheet = "Planilha1"
-) %>% 
-  clean_names()
-
-# Determinar unidade base para cada material (mais frequente)
-unidade_base_por_material <- data_com_mestre %>%
-  group_by(cd_material_final, sg_medida_port) %>%
-  summarise(n = n(), .groups = 'drop_last') %>%
-  slice_max(n, n = 1, with_ties = FALSE) %>%
-  select(cd_material_final, unidade_base = sg_medida_port)
+# 
+# tabela_conversao <- read_excel(
+#   here(config$paths$data$external, "tabela_conversao.xlsx"),
+#   sheet = "Planilha1"
+# ) %>% 
+#   clean_names()
+# 
+# # Determinar unidade base para cada material (mais frequente)
+# unidade_base_por_material <- data_com_mestre %>%
+#   group_by(cd_material_final, sg_medida_port) %>%
+#   summarise(n = n(), .groups = 'drop_last') %>%
+#   slice_max(n, n = 1, with_ties = FALSE) %>%
+#   select(cd_material_final, unidade_base = sg_medida_port)
 
 # OK Até aqui!! Continuar!!!!! #####
 
