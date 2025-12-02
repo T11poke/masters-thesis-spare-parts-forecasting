@@ -96,8 +96,10 @@ cat("\n📋 Análise exploratória dos dados brutos...\n")
 cat("Estrutura dos dados de consumo:\n")
 glimpse(data_consumo)
 
+data_consumo$qt_consumo %<>% converter_numero_brasileiro()
+
 cat("\nResumo estatístico do consumo:\n")
-skim(data_consumo)
+skim(data_consumo, qt_consumo)
 
 cat("\nEstrutura dos dados de alternados:\n")
 glimpse(data_alternados)
@@ -113,12 +115,13 @@ log_message(sprintf("Duplicatas identificadas: %d", duplicados_alternados),
 
 # 3. TRATAMENTO DOS DADOS DE ALTERNADOS ####
 #' Metodologia: 3.3.2. Tratamento e limpeza dos dados
-#' Primeira etapa: Compilação de alternados
-#' Segunda etapa: Identificação e tratamento de outliers
-#' Terceira etapa: validação de consistência
-#' Quarta etapa: transformações para séries temporais completas
+#' Primeira etapa: validação de consistência
+#' Segunda etapa: Compilação de alternados
+#' Terceira etapa: transformações para séries temporais completas
 
-## ETAPA 1/4: Compilação de alternados ####
+## ETAPA 1/3: validação de consistência ####
+
+## ETAPA 2/3: Compilação de alternados ####
 
 log_message("Processando consolidação de materiais alternados (Etapa 1 de 4)", "INFO")
 cat("\n🔄 Processando mapeamento de SKUs alternados...\n")
@@ -326,24 +329,7 @@ log_message(sprintf("Agregação concluída: %s registros.
                     format(nrow(data_agrupado), big.mark = ","),
                     (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100), "INFO")
 
-## ETAPA 2/4: Identificação e tratamento de outliers ####
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## ETAPA 3/4: validação de consistência ####
 ### ANÁLISE DE QUALIDADE DOS DADOS ####
 
 # Identificar inconsistências (consumos negativos ou zero)
@@ -356,7 +342,7 @@ if(nrow(data_inconsistente) > 0) {
   cat("Salvando registros inconsistentes...\n")
   write_xlsx(
     data_inconsistente, 
-    here("data", "processed", "inconsistencias_consumo_negativo.xlsx")
+    here(config$paths$data$processed, "inconsistencias_consumo_negativo.xlsx")
   )
 }
 
