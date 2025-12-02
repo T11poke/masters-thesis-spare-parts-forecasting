@@ -37,7 +37,7 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
         -   \~/R/masters-thesis-spare-parts-forecasting/output/reports/ALERTA_conflitos_unidades.csv
 
             |  |  |  |  |  |  |
-            |-----------:|:----------:|:----------:|:----------:|:----------:|:----------:|
+            |---:|:--:|:--:|:--:|:--:|:--:|
             |  | **cd_material_final** | **n_unidades** | **unidades** | **n_registros** | **Implementação** |
             | ✅1 | 298100000053 | 3 | CJ \| UN \| KT | 31 | CJ = UN = KT |
             | ✅2 | 307050000726 | 3 | UN \| m \| PE | 10 | UN = m = PE/0.3048 |
