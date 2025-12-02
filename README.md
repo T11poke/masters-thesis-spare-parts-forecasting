@@ -30,36 +30,9 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📋 TO-DO LIST! 🟡
 
-1.  Transformar unidades
+1.  
 
-    -   ⚠️ 15 MATERIAIS MESTRES T�M M�LTIPLAS UNIDADES!
-
-        -   \~/R/masters-thesis-spare-parts-forecasting/output/reports/ALERTA_conflitos_unidades.csv
-
-            |  |  |  |  |  |  |
-            |---:|:--:|:--:|:--:|:--:|:--:|
-            |  | **cd_material_final** | **n_unidades** | **unidades** | **n_registros** | **Implementação** |
-            | ✅1 | 298100000053 | 3 | CJ \| UN \| KT | 31 | CJ = UN = KT |
-            | ✅2 | 307050000726 | 3 | UN \| m \| PE | 10 | UN = m = PE/0.3048 |
-            | ✅3 | 304030000275 | 2 | CT \| UN | 519 | Eliminar |
-            | ✅4 | 298100000417 | 2 | UN \| KT | 196 | UN = KT |
-            | ✅5 | 364030000289 | 2 | UN \| PR | 153 | 2xUN = PR |
-            | ✅6 | 315050000074 | 2 | BD \| GL | 78 | BD = GL |
-            | ✅7 | 315020000116 | 2 | LT \| L | 61 | LT = L |
-            | ✅8 | 315120000135 | 2 | L \| BD | 35 | L = BD |
-            | ✅9 | 304080000515 | 2 | UN \| kg | 32 | UN = kg |
-            | ✅10 | 343060000125 | 2 | PD \| BA | 19 | Eliminar |
-            | ✅11 | 315070000113 | 2 | UN \| KT | 11 | UN = KT |
-            | ✅12 | 364090000578 | 2 | m \| PE | 11 | m = PE/0.3048 |
-            | ✅13 | 364130000096 | 2 | UN \| KT | 9 | UN = KT |
-            | ✅14 | 364190001947 | 2 | UN \| KT | 5 | UN = KT |
-            | ✅15 | 364110000517 | 2 | UN \| RO | 2 | UN = RO |
-
-2.  Agrupar alternados com unidades diferentes
-
-3.  Verificar outliers
-
-4.  
+2.  
 
 ## ▶️Script Pipeline
 
