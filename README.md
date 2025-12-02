@@ -30,7 +30,7 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📋 TO-DO LIST! 🟡
 
-1.  
+1.  Refazer a limpeza manual do dataset data compilado
 
 2.  
 
