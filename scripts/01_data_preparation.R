@@ -119,6 +119,8 @@ log_message(sprintf("Duplicatas identificadas: %d", duplicados_alternados),
 ## ETAPA 1/3: validação de consistência ####
 ### ANÁLISE DE QUALIDADE DOS DADOS ####
 
+log_message("Análise inicial dos dados (Etapa 1 de 3)", "INFO")
+
 # Identificar inconsistências (consumos negativos ou zero)
 data_inconsistente <- data_consumo %>% 
   filter(qt_consumo <= 0)
@@ -157,7 +159,7 @@ data_consumo %$% skim(qt_consumo)
 
 ## ETAPA 2/3: Compilação de alternados ####
 
-log_message("Processando consolidação de materiais alternados (Etapa 1 de 4)", "INFO")
+log_message("Processando consolidação de materiais alternados (Etapa 2 de 3)", "INFO")
 cat("\n🔄 Processando mapeamento de SKUs alternados...\n")
 
 # Criar arestas para o grafo (eliminar duplicatas A-B e B-A)
@@ -314,9 +316,6 @@ conflitos_unidade <- analisar_unidades_pos_agregacao(
 data_com_mestre %>% write_xlsx(here(config$paths$data$interim, "data_com_mestre.xlsx"))
 conflitos_unidade %>% write_xlsx(here(config$paths$output$reports, "problemas_unidade.xlsx"))
 
-##### COntinuar aqui!!!! ############
-
-
 data_com_mestre_tratada <- read_excel(
   here(config$paths$data$interim, "data_com_mestre2.xlsx"),
   sheet = "Sheet1"
@@ -327,12 +326,12 @@ materiais_a_eliminar <- c(
   343060000125
 )
 
-temp_nrow <- nrow(data_com_mestre_tratada)
 data_com_mestre_tratada %<>% filter(!cd_material_final %in% materiais_a_eliminar)
 
 cat(sprintf(
   "%s registros eliminados manualmente \n Redução: %.1f%%",
-  temp_nrow - nrow(data_com_mestre), (1 - nrow(data_com_mestre)/temp_nrow) * 100
+  nrow(data_com_mestre) - nrow(data_com_mestre_tratada),
+  (1 - nrow(data_com_mestre_tratada)/nrow(data_com_mestre)) * 100
 ))
 log_message(sprintf(
   "Registros eliminados manualmente: %s registros.
@@ -366,14 +365,73 @@ log_message(sprintf("Agregação concluída: %s registros.
                     format(nrow(data_agrupado), big.mark = ","),
                     (1 - nrow(data_agrupado)/nrow(data_consumo)) * 100), "INFO")
 
+## ETAPA 3/3: CRIAR SÉRIE TEMPORAL COMPLETA ####
+
+log_message("Criando séries temporais completas com zeros explícitos (Etapa 3 de 3)", "INFO")
+cat("\n⏱️  Criando séries temporais completas...\n")
+
+# Identificar período completo de análise
+
+# bkp_data <- data_agrupado
+
+# Converter para formato de data
+data_final <- data_agrupado %>%
+
+data_obs <- data_final %>%
+  mutate(
+    data = make_date(
+      year = as.numeric(ano_competencia),
+      month = as.numeric(mes_competencia),
+      day = 1
+    ),
+    cd_material = as.character(cd_material)
+  ) %>%
+  filter(
+    !is.na(data),
+    !is.na(qt_total),
+    qt_total > 0  # Manter apenas registros com consumo > 0
+  ) %>%
+  select(cd_material, data, qt_total)
+
+# Determinar período completo da base
+periodo_inicio_base <- min(data_obs$data)
+ultimo_mes_base <- max(data_obs$data)
+# Ajustar para evitar mês incompleto
+periodo_fim_base <- ultimo_mes_base - months(1)
+
+cat(sprintf("📊 Período da base: %s a %s\n", 
+            format(periodo_inicio_base, "%Y-%m"),
+            format(ultimo_mes_base, "%Y-%m")))
+cat(sprintf("⚠️  Último mês (%s) será excluído - possível mês incompleto\n", 
+            format(ultimo_mes_base, "%Y-%m")))
+cat(sprintf("📅 Período para análise: %s a %s\n", 
+            format(periodo_inicio_base, "%Y-%m"),
+            format(periodo_fim_base, "%Y-%m")))
 
 
 
-# 7. SALVAMENTO DOS RESULTADOS ####
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 4. SALVAMENTO DOS RESULTADOS ####
 
 cat("\n💾 Salvando resultados...\n")
 
 # Salvar dados processados
+
+
 write_rds(data_final, here("data", "processed", "consumo_agrupado_por_mestre.rds"))
 write_xlsx(data_final, here("data", "processed", "consumo_agrupado_por_mestre.xlsx"))
 
