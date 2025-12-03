@@ -18,6 +18,7 @@ library(skimr)
 library(janitor)
 library(igraph)
 library(future)
+library(tsibble)
 
 source(here("R/utils/load_config.R"))
 source(here("R/functions/tratamento_dados.R"))
@@ -375,11 +376,9 @@ cat("\n⏱️  Criando séries temporais completas...\n")
 # bkp_data <- data_agrupado
 
 # Converter para formato de data
-data_final <- data_agrupado %>%
-
-data_obs <- data_final %>%
+data_final <- data_agrupado %>% 
   mutate(
-    data = make_date(
+    data_competencia = make_date(
       year = as.numeric(ano_competencia),
       month = as.numeric(mes_competencia),
       day = 1
@@ -389,13 +388,14 @@ data_obs <- data_final %>%
   filter(
     !is.na(data),
     !is.na(qt_total),
-    qt_total > 0  # Manter apenas registros com consumo > 0
+    qt_total > 0
   ) %>%
-  select(cd_material, data, qt_total)
+  select(cd_material, data_competencia, qt_total, sg_medida_port)
 
 # Determinar período completo da base
-periodo_inicio_base <- min(data_obs$data)
-ultimo_mes_base <- max(data_obs$data)
+periodo_inicio_base <- data_final %$% min(data_competencia)
+ultimo_mes_base <- data_final %$% max(data_competencia)
+
 # Ajustar para evitar mês incompleto
 periodo_fim_base <- ultimo_mes_base - months(1)
 
@@ -408,22 +408,82 @@ cat(sprintf("📅 Período para análise: %s a %s\n",
             format(periodo_inicio_base, "%Y-%m"),
             format(periodo_fim_base, "%Y-%m")))
 
+log_message(
+  sprintf("📅 Período para análise: %s a %s\n", 
+          format(periodo_inicio_base, "%Y-%m"),
+          format(periodo_fim_base, "%Y-%m")),
+  "INFO"
+  )
 
+### CRIAR GRID COMPLETO DE DATAS ####
 
+# Criar sequência completa de datas
+datas_ref_completas <- seq(
+  from = periodo_inicio_base,
+  to = periodo_fim_base,
+  by = "month"
+)
 
+# Lista de todos os materiais únicos
+materiais_unicos <- data_final %$% unique(cd_material)
 
+cat(sprintf("📋 Materiais únicos: %s\n", format(length(materiais_unicos), big.mark = ",")))
+cat(sprintf("📅 Meses no período: %d\n", length(datas_ref_completas)))
 
+# Criar grid completo (material x data)
+grid_completo <- expand_grid(
+  cd_material = materiais_unicos,
+  data_competencia = datas_ref_completas
+)
 
+cat(sprintf("🔢 Grid completo: %s combinações (material x mês)\n", 
+            format(nrow(grid_completo), big.mark = ",")))
 
+# Fazer join para preencher zeros
+ts_completa <- grid_completo %>%
+  left_join(data_final, by = c("cd_material", "data_competencia")) %>%
+  mutate(qt_total = ifelse(is.na(qt_total), 0, qt_total)) %>%
+  arrange(cd_material, data_competencia) %>%
+  as_tsibble(key = cd_material, index = data_competencia)
 
+cat(
+  sprintf(
+    "✅ Dados completos criados: %s registros\n",
+    format(nrow(ts_completa), big.mark = ",")
+    )
+  )
 
+log_message(
+  sprintf(
+    "✅ Criada a ts_completa com  %s registros\n",
+    format(nrow(ts_completa), big.mark = ",")
+  ), "INFO"
+)
 
+# Verificar resultado
+resumo_preenchimento <- ts_completa %>%
+  as_tibble() %>%
+  summarise(
+    registros_total = n(),
+    registros_zero = sum(qt_total == 0),
+    registros_consumo = sum(qt_total > 0),
+    pct_zeros = round(mean(qt_total == 0) * 100, 1)
+  )
 
-
-
-
-
-
+log_message(
+  sprintf(
+    "📊 Resumo do preenchimento:\n
+       - Total de registros: %s
+       - Registros com zero: %s (%.1f%%)
+       - Registros positivos: %s (%.1f%%)\n",
+    format(resumo_preenchimento$registros_total, big.mark = ","),
+    format(resumo_preenchimento$registros_zero, big.mark = ","),
+    resumo_preenchimento$pct_zeros,
+    format(resumo_preenchimento$registros_consumo, big.mark = ","),
+    100 - resumo_preenchimento$pct_zeros
+    ),
+  "INFO"
+)
 
 # 4. SALVAMENTO DOS RESULTADOS ####
 
@@ -431,20 +491,22 @@ cat("\n💾 Salvando resultados...\n")
 
 # Salvar dados processados
 
+ts_completa %>% write_rds(here(
+  config$paths$data$processed, "ts_completa.rds")
+  )
 
-write_rds(data_final, here("data", "processed", "consumo_agrupado_por_mestre.rds"))
-write_xlsx(data_final, here("data", "processed", "consumo_agrupado_por_mestre.xlsx"))
+data_final %>% write_rds(here(
+  config$paths$data$processed, "consumo_agregado_por_mestre.rds")
+  )
+data_final %>% write_xlsx(here(
+  config$paths$data$processed, "consumo_agregado_por_mestre.xlsx"
+))
 
-# Salvar mapeamento de alternados para referência
-write_xlsx(mapa_de_para, here("data", "processed", "mapeamento_alternados.xlsx"))
+mapa_de_para %>% write_xlsx(here(
+  config$paths$data$processed, "mapeamento_alternados.xlsx"
+))
 
-# Salvar ambiente (se necessário para compatibilidade)
-save(
-  data_final, 
-  file = here("output", "models", "environment_dados_tratados.RData")
-)
-
-# 8. RELATÓRIO FINAL ####
+# 5. RELATÓRIO FINAL ####
 
 cat("\n🎉 PROCESSAMENTO CONCLUÍDO! 🎉\n")
 cat("==========================================\n")
@@ -457,18 +519,23 @@ cat(sprintf("⚠️  Inconsistências removidas: %s\n", format(nrow(data_inconsi
 cat(sprintf("📉 Redução total: %.1f%%\n", (1 - nrow(data_final)/nrow(data_consumo)) * 100))
 
 cat("\n📁 Arquivos gerados:\n")
+cat("   - data/processed/ts_completa.rds\n")
 cat("   - data/processed/consumo_agrupado_por_mestre.rds\n")
 cat("   - data/processed/consumo_agrupado_por_mestre.xlsx\n")
 cat("   - data/processed/mapeamento_alternados.xlsx\n")
-cat("   - output/models/environment_dados_tratados.RData\n")
-
-if(nrow(data_inconsistente) > 0) {
-  cat("   - data/processed/inconsistencias_consumo_negativo.xlsx\n")
-}
-
-cat("\n✅ Dados prontos para análise exploratória!\n")
-cat("Próximo passo: Execute o script 02_exploratory_analysis.R\n")
 
 # Limpeza do ambiente (opcional)
-rm(list = setdiff(ls(), c("data_final")))
+rm(list = setdiff(ls(), c(
+  "config",
+  "log_message",
+  "data_final",
+  "ts_completa"
+  )))
 
+save.image(here(
+  config$paths$output$models, "01_data_preparation.RData"
+))
+
+log_message(
+  "🎆 Término da execução do script 01_data_preparation.R 🎉", "INFO"
+)
