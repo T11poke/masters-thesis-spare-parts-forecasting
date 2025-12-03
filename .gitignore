@@ -68,6 +68,7 @@ data/external/*.xlsx
 *.xlsx
 *.xls
 *.rds
+*.RData
 *.feather
 *.parquet
 data/processed/*.csv
