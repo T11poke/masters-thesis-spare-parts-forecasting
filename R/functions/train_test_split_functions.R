@@ -237,7 +237,11 @@ validar_integridade_temporal <- function(train, test, origem_id) {
   }
   
   # Verificar continuidade (deve haver exatamente 1 mês de diferença)
-  gap_months <- lubridate::interval(max_train, min_test) %/% lubridate::months(1)
+  # gap_months <- lubridate::interval(max_train, min_test) %/% lubridate::months(1)
+  gap_months <- lubridate::time_length(
+    lubridate::interval(max_train, min_test), 
+    unit = "months"
+  )
   
   if (gap_months != 1) {
     warning(sprintf("⚠️  Origem %d: Gap temporal inesperado de %d meses entre treino e teste",
