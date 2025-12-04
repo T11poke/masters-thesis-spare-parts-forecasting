@@ -48,6 +48,8 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 03_exploratory_analysis.R
 
+-   Caracterização dos padrões de demanda segundo taxonomia SBC, análise descritiva por categoria, subsistema e temporal
+
 04a_baseline_models_forecast.R
 
 04b_adida_models_forecast.R
