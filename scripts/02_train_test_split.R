@@ -114,9 +114,9 @@ log_message("Splits criados para todas as origens", "INFO")
 
 log_message("Analisando transições de categorias SBC entre origens", "INFO")
 
-cat("\n" %+% strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 cat("ANÁLISE DE TRANSIÇÕES SBC ENTRE ORIGENS\n")
-cat(strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 
 # Consolidar classificações de todas as origens
 todas_classificacoes <- map_dfr(
@@ -191,9 +191,9 @@ log_message(sprintf("Análise de transições concluída: %d transições detect
 
 log_message("Executando validações globais", "INFO")
 
-cat("\n" %+% strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 cat("VALIDAÇÕES GLOBAIS\n")
-cat(strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 
 # Validação 1: Número de materiais no teste
 cat("\n🔍 Validação 1: Materiais nos conjuntos de teste\n")
@@ -275,15 +275,20 @@ log_message("Validações globais concluídas", "INFO")
 
 log_message("Salvando resultados", "INFO")
 
-cat("\n" %+% strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 cat("SALVAMENTO DOS RESULTADOS\n")
-cat(strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 
 # Salvar estrutura completa de splits
-arquivo_splits <- here(config$paths$data$processed, "train_test_splits.rds")
-saveRDS(splits_list, arquivo_splits)
-cat(sprintf("\n✅ Splits salvos: %s\n", basename(arquivo_splits)))
-log_message(sprintf("Splits salvos em: %s", arquivo_splits), "INFO")
+splits_list %>% saveRDS(here(config$paths$data$processed, "train_test_splits.rds"))
+cat(sprintf("\n✅ Splits salvos: %s\n", basename(here(config$paths$data$processed, "train_test_splits.rds"))))
+log_message(
+  sprintf(
+    "Splits salvos em: %s",
+    here(config$paths$data$processed, "train_test_splits.rds")
+    ),
+  "INFO"
+  )
 
 # Salvar metadados consolidados
 metadados_consolidados <- map_dfr(
@@ -298,8 +303,7 @@ metadados_consolidados <- map_dfr(
     )
 )
 
-write_xlsx(
-  metadados_consolidados,
+metadados_consolidados %>% write_xlsx(
   here(config$paths$output$reports, "train_test_metadata.xlsx")
 )
 cat(sprintf("✅ Metadados salvos: train_test_metadata.xlsx\n"))
@@ -310,8 +314,7 @@ todas_classificacoes_completas <- map_dfr(
   ~splits_list[[.x]]$sbc_classification
 )
 
-write_xlsx(
-  todas_classificacoes_completas,
+todas_classificacoes_completas %>% write_xlsx(
   here(config$paths$output$reports, "sbc_classifications_all_origins.xlsx")
 )
 cat(sprintf("✅ Classificações SBC salvas: sbc_classifications_all_origins.xlsx\n"))
@@ -322,8 +325,7 @@ stats_presenca_consolidadas <- map_dfr(
   ~splits_list[[.x]]$stats_presenca
 )
 
-write_xlsx(
-  stats_presenca_consolidadas,
+stats_presenca_consolidadas %>% write_xlsx(
   here(config$paths$output$reports, "estatisticas_presenca_materiais.xlsx")
 )
 cat(sprintf("✅ Estatísticas de presença salvas: estatisticas_presenca_materiais.xlsx\n"))
@@ -356,9 +358,9 @@ cat(sprintf("✅ Workspace salvo: 02_train_test_split.RData\n"))
 
 # 7. RELATÓRIO FINAL ####
 
-cat("\n" %+% strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 cat("🎉 PROCESSAMENTO CONCLUÍDO! 🎉\n")
-cat(strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 
 cat("\n📊 RESUMO GERAL:\n\n")
 
@@ -417,8 +419,6 @@ cat("   - output/reports/estatisticas_presenca_materiais.xlsx\n")
 cat("   - output/reports/analise_transicoes_sbc.xlsx\n")
 cat("   - output/reports/validacoes_globais.xlsx\n")
 cat("   - output/models/02_train_test_split.RData\n")
-
-cat("\n✅ Próximo passo: Execute 03_exploratory_analysis.R\n")
 
 log_message("========================================", "INFO")
 log_message("DIVISÃO TEMPORAL CONCLUÍDA COM SUCESSO", "INFO")
