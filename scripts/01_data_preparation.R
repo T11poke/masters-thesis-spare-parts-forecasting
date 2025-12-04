@@ -337,8 +337,9 @@ cat(sprintf(
 log_message(sprintf(
   "Registros eliminados manualmente: %s registros.
                                                      Redução:  %.1f%%",
-  temp_nrow - nrow(data_com_mestre),(1 - nrow(data_com_mestre)/temp_nrow) * 100
-), "INFO")  
+  nrow(data_com_mestre) - nrow(data_com_mestre_tratada),
+  (1 - nrow(data_com_mestre_tratada)/nrow(data_com_mestre)) * 100
+), "INFO")
 
 conflitos_unidade <- analisar_unidades_pos_agregacao(
   data = data_com_mestre_tratada,
@@ -446,6 +447,42 @@ ts_completa <- grid_completo %>%
   arrange(cd_material, data_competencia) %>%
   as_tsibble(key = cd_material, index = data_competencia)
 
+# Adicionar informação de subsistema (cd_projeto)
+# NOTA: Um material pode estar associado a múltiplos subsistemas
+# Estratégia: criar coluna com subsistema(s) predominante(s)
+
+ts_completa %<>%
+  left_join(
+    data_com_mestre_tratada %>%
+      group_by(cd_material_final) %>%
+      # Pegar subsistema(s) com maior volume de consumo histórico
+      summarise(
+        cd_projeto = {
+          proj_counts <- table(cd_projeto)
+          # Se único subsistema, retornar ele
+          if (length(proj_counts) == 1) {
+            names(proj_counts)[1]
+          } else {
+            # Se múltiplos, retornar os que representam >20% do consumo
+            main_projs <- names(proj_counts[proj_counts/sum(proj_counts) > 0.20])
+            paste(main_projs, collapse = ";")
+          }
+        },
+        n_subsistemas = n_distinct(cd_projeto),
+        .groups = 'drop'
+      ),
+    by = c("cd_material" = "cd_material_final")
+  )
+
+# Validar cd_projeto
+cat(sprintf("✅ Informação de subsistema adicionada:\n"))
+cat(sprintf("   - Materiais com subsistema único: %s\n",
+            sum(ts_completa$n_subsistemas == 1, na.rm = TRUE)))
+cat(sprintf("   - Materiais com múltiplos subsistemas: %s\n",
+            sum(ts_completa$n_subsistemas > 1, na.rm = TRUE)))
+cat(sprintf("   - Materiais sem subsistema: %s\n",
+            sum(is.na(ts_completa$cd_projeto))))
+
 cat(
   sprintf(
     "✅ Dados completos criados: %s registros\n",
@@ -539,3 +576,4 @@ save.image(here(
 log_message(
   "🎆 Término da execução do script 01_data_preparation.R 🎉", "INFO"
 )
+
