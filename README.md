@@ -30,7 +30,7 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📋 TO-DO LIST! 🟡
 
-1.  02_train_test_split.R
+1.  
 
 ## ▶️Script Pipeline
 
@@ -43,6 +43,8 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 -   Carrega os dados brutos necessários e faz o tratamento inicial de verificação da base conforme metodologia estabelecida no trabalho.
 
 02_train_test_split.R
+
+-   Implementa estratégia de validação rolling origin com janela \# expansiva, classificação SBC por origem e validações de integridade
 
 03_exploratory_analysis.R
 
