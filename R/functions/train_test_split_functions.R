@@ -1,18 +1,47 @@
-# FUNÇÕES ASSESSÓRIA AVALIAÇÃO DOS MODELOS UTILIZANDO OS DATASET TREINO E VALIDAÇÃO ####
+# FUNÇÕES AUXILIARES PARA VALIDAÇÃO TRAIN/TEST SPLIT ####
 #
-# Arquivo:
-# Descrição
-# Autor:
-# Data:
+# Arquivo: R/functions/train_test_split_functions.R
+# Descrição: Funções para criação e validação de splits temporais com rolling origin,
+#            classificação SBC e estatísticas descritivas por origem
+# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
+# Data: 2025-12-03
+#
+# Dependências: tidyverse, tsibble, lubridate
 
-#'
-#'
-#'
-#'
-#'
-#'
-#'
+# DEFINIÇÃO DE ORIGENS TEMPORAIS ####
 
+#' Definir origens temporais para validação rolling origin
+#'
+#' Cria estrutura de datas de corte para validação com janela expansiva,
+#' trabalhando de trás para frente a partir da última data disponível.
+#' Implementa estratégia descrita na metodologia (Seção 3.4.1).
+#'
+#' @param ultima_data Data final do período de análise (Date)
+#' @param n_origins Número de origens temporais a criar (integer)
+#' @param test_months Horizonte de teste em meses (integer, default=12)
+#' @param train_min_months Período mínimo de treino em meses (integer, default=36)
+#' @param primeira_data_disponivel Primeira data disponível nos dados (Date)
+#'
+#' @return tibble com colunas: origem_id, train_start, train_end, test_start,
+#'         test_end, n_train_months, n_test_months
+#'
+#' @details
+#' A função implementa estratégia rolling origin com janela expansiva:
+#' - Origem mais recente (n_origins) tem teste terminando em ultima_data
+#' - Cada origem anterior recua test_months meses
+#' - Treino sempre inicia na primeira_data_disponivel (janela expansiva)
+#' - Valida automaticamente se train_min_months é atendido
+#'
+#' @examples
+#' origens <- definir_origens_temporais(
+#'   ultima_data = as.Date("2024-10-01"),
+#'   n_origins = 4,
+#'   test_months = 12,
+#'   train_min_months = 36,
+#'   primeira_data_disponivel = as.Date("2020-01-01")
+#' )
+#'
+#' @export
 # Função para definir origens temporais ####
 definir_origens_temporais <- function(ultima_data, 
                                       n_origins,
