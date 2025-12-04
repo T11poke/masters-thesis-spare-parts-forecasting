@@ -86,22 +86,10 @@ log_message("Origens temporais definidas com sucesso", "INFO")
 
 log_message("Criando splits de treino/teste para cada origem", "INFO")
 
-
-
-
-
-
-
-
-
-
-# Continuar aqui!!!!! ####
-
-
 # Criar splits para todas as origens ####
-cat("\n" %+% strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 cat("CRIANDO SPLITS PARA TODAS AS ORIGENS\n")
-cat(strrep("=", 70) %+% "\n")
+cat("\n", strrep("=", 70), "\n", sep = "")
 
 splits_list <- map2(
   split(origens_metadata, origens_metadata$origem_id),
