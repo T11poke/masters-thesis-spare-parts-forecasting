@@ -59,6 +59,11 @@ cat(sprintf("   - Número de origens: %d\n", n_origins))
 cat(sprintf("   - Horizonte de teste: %d meses\n", test_months))
 cat(sprintf("   - Treino mínimo: %d meses\n", train_min_months))
 
+source(
+  here(
+    "R/functions/train_test_split_functions.R"
+  )
+)
 
 # Definir origens
 primeira_data <- min(ts_completa$data_competencia)
