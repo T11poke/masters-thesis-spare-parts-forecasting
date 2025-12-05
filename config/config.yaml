@@ -52,13 +52,13 @@ parameters:
       - 'croston'
       - 'sba'
       - 'tsb'
-      probabilistic_methods:
+    probabilistic_methods:
       - 'poisson'        # Método atual DECEA
       - 'gamma'
-      adida:
-        enabled: true
-        aggregation_levels: [3, 12]  # k=3 (trimestral), k=12 (anual)
-        base_methods: ['mean', 'croston']
+    adida:
+      enabled: true
+      aggregation_levels: [3, 12]  # k=3 (trimestral), k=12 (anual)
+      base_methods: ['mean', 'croston']
   metrics:
     primary:
       - 'mae'                   # Mean Absolute Error
@@ -100,4 +100,3 @@ output:
     height: 6
   tables:
     format: 'xlsx'
-

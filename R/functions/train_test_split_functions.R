@@ -51,9 +51,33 @@ definir_origens_temporais <- function(ultima_data,
   
   cat("\n🔍 Calculando datas de corte para cada origem...\n")
   
+  # Metodo 1:
   # Trabalhar de trás para frente
   # Origem 4 (mais recente): teste termina em ultima_data
   # Origem 3: teste termina 12 meses antes
+  # etc.
+  
+  # origens <- tibble::tibble(
+  #   origem_id = 1:n_origins
+  # ) %>%
+  #   dplyr::mutate(
+  #     # Calcular fim do teste
+  #     test_end = ultima_data - months((n_origins - origem_id) * test_months),
+  #     # Início do teste é test_months antes do fim
+  #     test_start = test_end - months(test_months - 1),
+  #     # Fim do treino é 1 mês antes do início do teste
+  #     train_end = test_start - months(1),
+  #     # Início do treino é a primeira data disponível (janela expansiva)
+  #     train_start = primeira_data_disponivel,
+  #     # Calcular duração do treino
+  #     n_train_months = lubridate::interval(train_start,train_end) %/% months(1) + 1,
+  #     n_test_months = test_months
+  #   )
+  
+  # Metodo 2:
+  # Trabalhar com origem fixa.
+  # Origem 4 (mais recente): teste termina em ultima_data
+  # Origem 3: teste termina na mesma data que origem 3, mas o treino deve ser menor em 12 meses.
   # etc.
   
   origens <- tibble::tibble(
@@ -61,13 +85,13 @@ definir_origens_temporais <- function(ultima_data,
   ) %>%
     dplyr::mutate(
       # Calcular fim do teste
-      test_end = ultima_data - months((n_origins - origem_id) * test_months),
+      test_end = ultima_data,
       # Início do teste é test_months antes do fim
       test_start = test_end - months(test_months - 1),
       # Fim do treino é 1 mês antes do início do teste
       train_end = test_start - months(1),
       # Início do treino é a primeira data disponível (janela expansiva)
-      train_start = primeira_data_disponivel,
+      train_start = primeira_data_disponivel + months((n_origins - origem_id) * test_months),
       # Calcular duração do treino
       n_train_months = lubridate::interval(train_start,train_end) %/% months(1) + 1,
       n_test_months = test_months
