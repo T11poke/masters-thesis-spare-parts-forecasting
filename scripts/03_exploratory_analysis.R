@@ -1013,63 +1013,11 @@ cat("\nEvolução Temporal das Características:\n")
 print(evolucao_temporal)
 
 # Exportar
-write_csv(
-  evolucao_temporal,
-  here(config$paths$output$tables, "03_exploratory", "evolucao_temporal.csv")
+evolucao_temporal %>% write_xlsx(
+  here(config$paths$output$tables, "03_exploratory", "evolucao_temporal.xlsx")
 )
 
-cat("\n   ✅ Tabela exportada: evolucao_temporal.csv\n")
-
-# Visualização 1: Evolução de ADI e CV² médios
-p10a <- evolucao_temporal %>%
-  select(origem, adi_medio, cv2_medio) %>%
-  pivot_longer(-origem, names_to = "metrica", values_to = "valor") %>%
-  ggplot(aes(x = origem, y = valor, group = metrica, color = metrica)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 3) +
-  scale_color_manual(
-    values = c("adi_medio" = "steelblue", "cv2_medio" = "darkorange"),
-    labels = c("ADI Médio", "CV² Médio")
-  ) +
-  labs(
-    title = "Evolução de ADI e CV² Médios",
-    x = "Origem Temporal", 
-    y = "Valor Médio",
-    color = "Métrica"
-  )
-
-# Visualização 2: Evolução da proporção de categorias
-p10b <- evolucao_temporal %>%
-  select(origem, starts_with("prop_")) %>%
-  pivot_longer(-origem, names_to = "categoria", values_to = "proporcao") %>%
-  mutate(
-    categoria = str_remove(categoria, "prop_"),
-    categoria = str_to_title(categoria)
-  ) %>%
-  ggplot(aes(x = origem, y = proporcao * 100, group = categoria, color = categoria)) +
-  geom_line(linewidth = 1.2) +
-  geom_point(size = 3) +
-  scale_color_nejm() +
-  labs(
-    title = "Evolução da Distribuição de Categorias SBC",
-    x = "Origem Temporal", 
-    y = "Proporção (%)",
-    color = "Categoria"
-  )
-
-# Combinar gráficos
-p10 <- p10a / p10b + plot_annotation(
-  title = "Evolução Temporal de Características de Demanda",
-  theme = theme(plot.title = element_text(face = "bold", size = 16))
-)
-
-ggsave(
-  here(config$paths$output$figures, "03_exploratory", "10_evolucao_temporal_metricas.png"),
-  plot = p10,
-  width = 12, height = 10, dpi = 300
-)
-
-cat("   ✅ Gráfico salvo: 10_evolucao_temporal_metricas.png\n")
+cat("\n   ✅ Tabela exportada: evolucao_temporal.xlsx\n")
 
 ## 4.3. Análise de Estabilidade dos Padrões ####
 
@@ -1087,51 +1035,6 @@ cat(sprintf("\n📊 Estabilidade de Padrões SBC:\n"))
 cat(sprintf("   - Materiais estáveis (sem transições): %.1f%%\n", prop_estaveis))
 cat(sprintf("   - Materiais voláteis (com transições): %.1f%%\n", 100 - prop_estaveis))
 
-# Taxa de volatilidade por subsistema (se disponível)
-if (tem_projeto && nrow(dados_subsistema_clean) > 0) {
-  
-  volatilidade_subsistema <- dados_subsistema_clean %>%
-    distinct(cd_material, cd_projeto_principal) %>%
-    left_join(
-      estabilidade %>% select(cd_material, estavel),
-      by = "cd_material"
-    ) %>%
-    group_by(cd_projeto_principal) %>%
-    summarise(
-      taxa_volatilidade = mean(!estavel, na.rm = TRUE) * 100,
-      n_materiais = n(),
-      .groups = 'drop'
-    ) %>%
-    arrange(desc(taxa_volatilidade))
-  
-  cat("\nTaxa de Volatilidade por Subsistema:\n")
-  print(volatilidade_subsistema)
-  
-  # Visualização
-  p11 <- ggplot(volatilidade_subsistema, 
-                aes(x = reorder(cd_projeto_principal, taxa_volatilidade), 
-                    y = taxa_volatilidade)) +
-    geom_col(fill = "coral", alpha = 0.8) +
-    geom_text(aes(label = sprintf("%.1f%%", taxa_volatilidade)), 
-              hjust = -0.1, fontface = "bold") +
-    coord_flip() +
-    scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.15))) +
-    labs(
-      title = "Taxa de Volatilidade de Padrões por Subsistema",
-      subtitle = "% de materiais que mudaram de categoria SBC entre origens",
-      x = "Subsistema", 
-      y = "Taxa de Volatilidade (%)"
-    )
-  
-  ggsave(
-    here(config$paths$output$figures, "03_exploratory", "11_volatilidade_subsistema.png"),
-    plot = p11,
-    width = 10, height = 8, dpi = 300
-  )
-  
-  cat("   ✅ Gráfico salvo: 11_volatilidade_subsistema.png\n")
-}
-
 log_message("Análise temporal concluída", "INFO")
 
 # =============================================================================
@@ -1144,9 +1047,9 @@ cat(strrep("=", 70), "\n\n")
 
 log_message("Iniciando análise de casos especiais", "INFO")
 
-## 5.2. Materiais com Dados Insuficientes ####
+## 5.1. Materiais com Dados Insuficientes ####
 
-cat("📊 5.2. Analisando materiais com dados insuficientes...\n")
+cat("📊 5.1. Analisando materiais com dados insuficientes...\n")
 
 # Consolidar materiais excluídos por todas as origens
 materiais_excluidos_consolidado <- map_dfr(
@@ -1161,14 +1064,9 @@ materiais_excluidos_consolidado <- map_dfr(
 insuficientes <- materiais_excluidos_consolidado %>%
   filter(str_detect(motivo, "< 3|insuficiente|ocorrências"))
 
-# Total de materiais únicos no universo
-total_materiais_universo <- n_distinct(ts_completa$cd_material)
-
 cat(sprintf("\n⚠️  Materiais com Dados Insuficientes:\n"))
 cat(sprintf("   - Total de materiais excluídos: %s\n", 
             format(n_distinct(insuficientes$cd_material), big.mark = ",")))
-cat(sprintf("   - % do universo inicial: %.1f%%\n",
-            n_distinct(insuficientes$cd_material) / total_materiais_universo * 100))
 
 # Estatísticas por origem
 cat("\nExclusões por origem:\n")
@@ -1201,12 +1099,6 @@ ggsave(
 
 cat("   ✅ Gráfico salvo: 12_proporcao_exclusoes.png\n")
 
-# Exportar lista de materiais excluídos
-write_csv(
-  materiais_excluidos_consolidado,
-  here(config$paths$output$tables, "03_exploratory", "materiais_excluidos.csv")
-)
-
 cat("   ✅ Tabela exportada: materiais_excluidos.csv\n")
 
 log_message("Análise de casos especiais concluída", "INFO")
@@ -1231,23 +1123,6 @@ gerar_resumo_origem <- function(origem_nome, split) {
   sbc <- split$sbc_classification
   train <- split$train
   
-  # Subsistema predominante (se disponível)
-  if ("cd_projeto" %in% names(sbc)) {
-    subsistema_info <- sbc %>%
-      filter(!is.na(cd_projeto)) %>%
-      mutate(cd_projeto_principal = str_split_fixed(cd_projeto, ";", 2)[,1]) %>%
-      count(cd_projeto_principal, sort = TRUE) %>%
-      slice(1)
-    
-    subsistema_texto <- sprintf(
-      "%s (%d materiais)",
-      subsistema_info$cd_projeto_principal,
-      subsistema_info$n
-    )
-  } else {
-    subsistema_texto <- "N/A"
-  }
-  
   resumo <- sprintf("
 %s - Período de Treino: %s a %s
 ═══════════════════════════════════════════════════════════════
@@ -1264,7 +1139,6 @@ gerar_resumo_origem <- function(origem_nome, split) {
    - Proporção Zeros:          %6.1f%%
    - Demanda Média (μz):       %6.1f unidades
    
-🔍 SUBSISTEMA PREDOMINANTE: %s
 ⚠️  MATERIAIS EXCLUÍDOS:     %d
 
 ",
@@ -1278,7 +1152,6 @@ gerar_resumo_origem <- function(origem_nome, split) {
                     median(sbc$cv2, na.rm = TRUE),
                     mean(train$qt_total == 0) * 100,
                     median(sbc$demanda_media, na.rm = TRUE),
-                    subsistema_texto,
                     nrow(split$materiais_excluidos)
   )
   
@@ -1304,95 +1177,9 @@ cat(resumos, sep = "\n")
 
 cat("   ✅ Relatório executivo salvo: 03_exploratory_summary_report.txt\n")
 
-## 6.2. Recomendações para Modelagem ####
+## 6.2. Salvamento de Metadados ####
 
-cat("\n📊 6.2. Gerando recomendações para modelagem...\n")
-
-# Análise consolidada para recomendações
-recomendacoes <- list(
-  
-  # Proporção que beneficiará métodos especializados
-  prop_intermitente_lumpy = mean(
-    todas_classificacoes$categoria_sbc %in% c("Intermittent", "Lumpy")
-  ) * 100,
-  
-  # Proporção Smooth + Erratic
-  prop_smooth_erratic = mean(
-    todas_classificacoes$categoria_sbc %in% c("Smooth", "Erratic")
-  ) * 100,
-  
-  # Subsistemas com maior desafio (maior % de Lumpy) - se disponível
-  subsistemas_desafiadores = if (tem_projeto && nrow(dados_subsistema_clean) > 0) {
-    dados_subsistema_clean %>%
-      group_by(cd_projeto_principal) %>%
-      summarise(prop_lumpy = mean(categoria_sbc == "Lumpy") * 100, .groups = 'drop') %>%
-      arrange(desc(prop_lumpy)) %>%
-      slice(1:3)
-  } else {
-    tibble(cd_projeto_principal = "N/A", prop_lumpy = 0)
-  },
-  
-  # Estabilidade geral
-  taxa_estabilidade_geral = mean(estabilidade$estavel) * 100,
-  
-  # Necessidade de abordagem híbrida
-  necessidade_hibrida = n_distinct(todas_classificacoes$categoria_sbc) > 2
-)
-
-cat("\n")
-cat("═══════════════════════════════════════════════════════════════\n")
-cat("RECOMENDAÇÕES PARA MODELAGEM\n")
-cat("═══════════════════════════════════════════════════════════════\n\n")
-
-cat(sprintf("📊 MAGNITUDE DO DESAFIO:\n"))
-cat(sprintf("   - %.1f%% dos materiais apresentam padrão Intermittent ou Lumpy\n",
-            recomendacoes$prop_intermitente_lumpy))
-cat(sprintf("   → Métodos especializados (Croston, SBA, TSB) são CRÍTICOS\n\n"))
-
-cat(sprintf("   - %.1f%% dos materiais apresentam padrão Smooth ou Erratic\n",
-            recomendacoes$prop_smooth_erratic))
-cat(sprintf("   → Métodos tradicionais podem ser competitivos neste segmento\n\n"))
-
-if (tem_projeto && nrow(recomendacoes$subsistemas_desafiadores) > 0 && 
-    recomendacoes$subsistemas_desafiadores$cd_projeto_principal[1] != "N/A") {
-  
-  cat(sprintf("🎯 SUBSISTEMAS PRIORITÁRIOS:\n"))
-  cat(sprintf("   Os seguintes subsistemas concentram maior proporção de padrões Lumpy:\n"))
-  for (i in 1:nrow(recomendacoes$subsistemas_desafiadores)) {
-    cat(sprintf("   %d. %s (%.1f%% Lumpy)\n",
-                i,
-                recomendacoes$subsistemas_desafiadores$cd_projeto_principal[i],
-                recomendacoes$subsistemas_desafiadores$prop_lumpy[i]))
-  }
-  cat("\n")
-}
-
-cat(sprintf("📈 ESTABILIDADE TEMPORAL:\n"))
-cat(sprintf("   - %.1f%% dos materiais mantêm categoria SBC estável entre origens\n",
-            recomendacoes$taxa_estabilidade_geral))
-
-if (recomendacoes$taxa_estabilidade_geral < 70) {
-  cat("   ⚠️  Alta volatilidade → Considerar recalibração periódica de modelos\n\n")
-} else {
-  cat("   ✅ Boa estabilidade → Modelos tendem a manter desempenho consistente\n\n")
-}
-
-cat(sprintf("🔧 ESTRATÉGIA RECOMENDADA:\n"))
-if (recomendacoes$necessidade_hibrida) {
-  cat("   ✅ ABORDAGEM HÍBRIDA é NECESSÁRIA:\n")
-  cat("      - Métodos especializados (Croston/SBA/TSB) para Intermittent/Lumpy\n")
-  cat("      - Métodos tradicionais competitivos para Smooth/Erratic\n")
-  cat("      - Considerar ADIDA para agregação temporal\n")
-  cat("      - Avaliar métodos probabilísticos (Poisson/Gama) como baseline\n")
-} else {
-  cat("   ℹ️  Método único pode ser suficiente (baixa heterogeneidade)\n")
-}
-
-cat("\n═══════════════════════════════════════════════════════════════\n")
-
-## 6.3. Salvamento de Metadados ####
-
-cat("\n📊 6.3. Salvando metadados exploratórios...\n")
+cat("\n📊 6.2. Salvando metadados exploratórios...\n")
 
 # Consolidar todos os resultados em objeto estruturado
 metadata_exploratoria <- list(
@@ -1409,17 +1196,6 @@ metadata_exploratoria <- list(
   materiais_volateis = estabilidade %>% filter(!estavel),
   estabilidade = estabilidade,
   
-  # Análise por subsistema (se disponível)
-  tem_dados_subsistema = tem_projeto,
-  distribuicao_sbc_subsistema = if (tem_projeto) {
-    dados_subsistema_clean %>% count(cd_projeto_principal, categoria_sbc)
-  } else {
-    tibble()
-  },
-  stats_subsistema = stats_subsistema,
-  tabela_cruzada_subsistema = tabela_cruzada,
-  teste_chi_subsistema = teste_chi,
-  
   # Evolução temporal
   evolucao_temporal = evolucao_temporal,
   
@@ -1428,10 +1204,7 @@ metadata_exploratoria <- list(
   materiais_insuficientes = insuficientes,
   
   # Materiais exemplo selecionados
-  materiais_exemplo = exemplos,
-  
-  # Recomendações
-  recomendacoes_modelagem = recomendacoes
+  materiais_exemplo = exemplos
 )
 
 # Salvar
@@ -1463,18 +1236,6 @@ validacoes <- list(
   })),
   
   todas_origens_analisadas = length(unique(distribuicao_sbc$origem)) == length(splits_list),
-  
-  graficos_principais_salvos = all(file.exists(
-    here(config$paths$output$figures, "03_exploratory",
-         c("01_distribuicao_sbc_origens.png",
-           "05_scatter_adi_cv2_categorias.png",
-           "06_exemplos_series_temporais.png"))
-  )),
-  
-  tabelas_exportadas = all(file.exists(
-    here(config$paths$output$tables, "03_exploratory",
-         c("stats_descritivas_por_categoria.csv"))
-  )),
   
   relatorio_gerado = file.exists(
     here(config$paths$output$reports, "03_exploratory_summary_report.txt")
@@ -1548,3 +1309,4 @@ rm(list = setdiff(ls(), c(
 save.image(here(config$paths$output$models, "03_exploratory_analysis.RData"))
 
 cat("\n✅ Workspace salvo: 03_exploratory_analysis.RData\n")
+

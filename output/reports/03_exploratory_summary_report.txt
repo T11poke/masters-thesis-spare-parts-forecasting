@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════════════════
+RELATÓRIO EXECUTIVO - ANÁLISE EXPLORATÓRIA DOS DADOS
+Projeto: Previsão de Demanda SISCEAB
+Data: 2025-12-05
+═══════════════════════════════════════════════════════════════
+
+
+origem_1 - Período de Treino: 2016-01-01 a 2021-10-01
+═══════════════════════════════════════════════════════════════
+
+📊 DISTRIBUIÇÃO SBC:
+   - Smooth:          13 materiais (  0.5%)
+   - Erratic:         13 materiais (  0.5%)
+   - Intermittent:  1769 materiais ( 64.9%)
+   - Lumpy:          929 materiais ( 34.1%)
+   
+📈 CARACTERÍSTICAS MÉDIAS:
+   - ADI Mediano:               14.00
+   - CV² Mediano:                0.27
+   - Proporção Zeros:            87.3%
+   - Demanda Média (μz):          2.0 unidades
+   
+⚠️  MATERIAIS EXCLUÍDOS:     11940
+
+
+
+origem_2 - Período de Treino: 2016-01-01 a 2022-10-01
+═══════════════════════════════════════════════════════════════
+
+📊 DISTRIBUIÇÃO SBC:
+   - Smooth:          12 materiais (  0.4%)
+   - Erratic:         12 materiais (  0.4%)
+   - Intermittent:  2105 materiais ( 64.3%)
+   - Lumpy:         1144 materiais ( 35.0%)
+   
+📈 CARACTERÍSTICAS MÉDIAS:
+   - ADI Mediano:               16.40
+   - CV² Mediano:                0.30
+   - Proporção Zeros:            88.8%
+   - Demanda Média (μz):          2.1 unidades
+   
+⚠️  MATERIAIS EXCLUÍDOS:     11391
+
+
+
+origem_3 - Período de Treino: 2016-01-01 a 2023-10-01
+═══════════════════════════════════════════════════════════════
+
+📊 DISTRIBUIÇÃO SBC:
+   - Smooth:           7 materiais (  0.2%)
+   - Erratic:         15 materiais (  0.4%)
+   - Intermittent:  2335 materiais ( 62.5%)
+   - Lumpy:         1381 materiais ( 36.9%)
+   
+📈 CARACTERÍSTICAS MÉDIAS:
+   - ADI Mediano:               18.80
+   - CV² Mediano:                0.31
+   - Proporção Zeros:            89.8%
+   - Demanda Média (μz):          2.2 unidades
+   
+⚠️  MATERIAIS EXCLUÍDOS:     10926
+
+
+
+origem_4 - Período de Treino: 2016-01-01 a 2024-10-01
+═══════════════════════════════════════════════════════════════
+
+📊 DISTRIBUIÇÃO SBC:
+   - Smooth:           8 materiais (  0.2%)
+   - Erratic:         13 materiais (  0.3%)
+   - Intermittent:  2628 materiais ( 61.9%)
+   - Lumpy:         1596 materiais ( 37.6%)
+   
+📈 CARACTERÍSTICAS MÉDIAS:
+   - ADI Mediano:               21.20
+   - CV² Mediano:                0.32
+   - Proporção Zeros:            90.7%
+   - Demanda Média (μz):          2.2 unidades
+   
+⚠️  MATERIAIS EXCLUÍDOS:     10419
+
+
