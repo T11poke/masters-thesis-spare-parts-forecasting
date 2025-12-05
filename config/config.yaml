@@ -79,5 +79,5 @@ output:
     width: 10
     height: 6
   tables:
-    format: 'csv'
+    format: 'xlsx'
 
