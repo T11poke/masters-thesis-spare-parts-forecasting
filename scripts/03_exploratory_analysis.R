@@ -902,69 +902,68 @@ log_message("Iniciando análise por subsistema", "INFO")
 
 ## 3.1. Características de Demanda por Subsistema ####
   
-  cat("\n📊 3.1. Calculando características por subsistema...\n")
+cat("\n📊 3.1. Calculando características por subsistema...\n")
   
-  # Estatísticas agregadas por subsistema
-  stats_subsistema <- map_dfr(
-    names(splits_list),
-    function(origem_nome) {
-      split <- splits_list[[origem_nome]]
-      
-      split$train %>%
-        as_tibble() %>%
-        filter(!is.na(cd_projeto)) %>%
-        mutate(cd_projeto_principal = str_split_fixed(cd_projeto, ";", 2)[,1]) %>%
-        group_by(cd_projeto_principal) %>%
-        summarise(
-          n_materiais = n_distinct(cd_material),
-          volume_total = sum(qt_total, na.rm = TRUE),
-          prop_zeros = mean(qt_total == 0),
-          demanda_mediana = median(qt_total[qt_total > 0], na.rm = TRUE),
-          .groups = 'drop'
-        ) %>%
-        mutate(origem = origem_nome)
-    }
+# Estatísticas agregadas por subsistema
+stats_subsistema <- map_dfr(
+  names(splits_list),
+  function(origem_nome) {
+    split <- splits_list[[origem_nome]]
+    
+    split$train %>%
+      as_tibble() %>%
+      filter(!is.na(cd_projeto)) %>%
+      mutate(cd_projeto_principal = str_split_fixed(cd_projeto, ";", 2)[,1]) %>%
+      group_by(cd_projeto_principal) %>%
+      summarise(
+        n_materiais = n_distinct(cd_material),
+        volume_total = sum(qt_total, na.rm = TRUE),
+        prop_zeros = mean(qt_total == 0),
+        demanda_mediana = median(qt_total[qt_total > 0], na.rm = TRUE),
+        .groups = 'drop'
+      ) %>%
+      mutate(origem = origem_nome)
+  }
+)
+
+cat("\nEstatísticas por Subsistema:\n")
+stats_subsistema %>%
+  group_by(cd_projeto_principal) %>%
+  summarise(
+    n_materiais_medio = mean(n_materiais),
+    volume_medio = mean(volume_total),
+    prop_zeros_media = mean(prop_zeros),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(volume_medio)) %>%
+  print()
+
+# Exportar
+stats_subsistema %>% write_xlsx(
+  here(config$paths$output$tables, "03_exploratory", "stats_subsistema.xlsx")
   )
-  
-  cat("\nEstatísticas por Subsistema:\n")
-  stats_subsistema %>%
-    group_by(cd_projeto_principal) %>%
-    summarise(
-      n_materiais_medio = mean(n_materiais),
-      volume_medio = mean(volume_total),
-      prop_zeros_media = mean(prop_zeros),
-      .groups = 'drop'
-    ) %>%
-    arrange(desc(volume_medio)) %>%
-    print()
-  
-  # Exportar
-  write_csv(
-    stats_subsistema,
-    here(config$paths$output$tables, "03_exploratory", "stats_subsistema.csv")
-  )
-  
-  cat("\n   ✅ Tabela exportada: stats_subsistema.csv\n")
-  
-  # Visualização: Barras comparando volume por subsistema
-  p8 <- stats_subsistema %>%
-    group_by(cd_projeto_principal) %>%
-    summarise(volume_medio = mean(volume_total), .groups = 'drop') %>%
-    arrange(desc(volume_medio)) %>%
-    ggplot(aes(x = reorder(cd_projeto_principal, volume_medio), y = volume_medio)) +
-    geom_col(fill = "steelblue", alpha = 0.8) +
-    geom_text(aes(label = comma(volume_medio, accuracy = 1)), 
-              hjust = -0.1, fontface = "bold") +
-    coord_flip() +
-    scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.15))) +
-    labs(
-      title = "Volume Total de Demanda por Subsistema",
-      subtitle = "Soma de todas as quantidades consumidas (média entre origens)",
-      x = "Subsistema", 
-      y = "Volume Total de Demanda"
+
+cat("\n   ✅ Tabela exportada: stats_subsistema.xlsx\n")
+
+# Visualização: Barras comparando volume por subsistema
+p8 <- stats_subsistema %>%
+  group_by(cd_projeto_principal) %>%
+  summarise(volume_medio = mean(volume_total), .groups = 'drop') %>%
+  arrange(desc(volume_medio)) %>%
+  ggplot(aes(x = reorder(cd_projeto_principal, volume_medio), y = volume_medio)) +
+  geom_col(fill = "steelblue", alpha = 0.8) +
+  geom_text(aes(label = comma(volume_medio, accuracy = 1)), 
+            hjust = -0.1, fontface = "bold") +
+  coord_flip() +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.15))) +
+  labs(
+    title = "Volume Total de Demanda por Subsistema",
+    subtitle = "Soma de todas as quantidades consumidas (média entre origens)",
+    x = "Subsistema", 
+    y = "Volume Total de Demanda"
     )
-  
-  ggsave(
+
+ggsave(
     here(config$paths$output$figures, "03_exploratory", "08_volume_demanda_subsistema.png"),
     plot = p8,
     width = 10, height = 8, dpi = 300
@@ -972,64 +971,64 @@ log_message("Iniciando análise por subsistema", "INFO")
   
   cat("   ✅ Gráfico salvo: 08_volume_demanda_subsistema.png\n")
   
-  ## 3.3. Comparação Entre Subsistemas (Testes Estatísticos) ####
-  
-  cat("\n📊 3.3. Comparando subsistemas estatisticamente...\n")
-  
-  # Preparar dados para testes
-  dados_teste <- map_dfr(
-    names(splits_list),
-    function(origem_nome) {
-      split <- splits_list[[origem_nome]]
-      
-      split$sbc_classification %>%
-        filter(!is.na(cd_projeto)) %>%
-        mutate(
-          cd_projeto_principal = str_split_fixed(cd_projeto, ";", 2)[,1],
-          origem = origem_nome
-        )
-    }
-  )
-  
-  # Teste Kruskal-Wallis para ADI médio entre subsistemas
-  if (n_distinct(dados_teste$cd_projeto_principal) >= 2) {
-    teste_adi <- kruskal.test(adi ~ cd_projeto_principal, data = dados_teste)
+## 3.3. Comparação Entre Subsistemas (Testes Estatísticos) ####
+
+cat("\n📊 3.3. Comparando subsistemas estatisticamente...\n")
+
+# Preparar dados para testes
+dados_teste <- map_dfr(
+  names(splits_list),
+  function(origem_nome) {
+    split <- splits_list[[origem_nome]]
     
-    cat(sprintf("\n📊 Teste Kruskal-Wallis: ADI entre Subsistemas\n"))
-    cat(sprintf("   H = %.2f, p-valor = %.4f\n", teste_adi$statistic, teste_adi$p.value))
-    
-    # Teste Kruskal-Wallis para CV² médio entre subsistemas
-    teste_cv2 <- kruskal.test(cv2 ~ cd_projeto_principal, data = dados_teste)
-    
-    cat(sprintf("\n📊 Teste Kruskal-Wallis: CV² entre Subsistemas\n"))
-    cat(sprintf("   H = %.2f, p-valor = %.4f\n", teste_cv2$statistic, teste_cv2$p.value))
-  } else {
-    cat("\n⚠️  Dados insuficientes para testes Kruskal-Wallis\n")
+    split$sbc_classification %>%
+      filter(!is.na(cd_projeto)) %>%
+      mutate(
+        cd_projeto_principal = str_split_fixed(cd_projeto, ";", 2)[,1],
+        origem = origem_nome
+      )
   }
+)
+
+# Teste Kruskal-Wallis para ADI médio entre subsistemas
+if (n_distinct(dados_teste$cd_projeto_principal) >= 2) {
+  teste_adi <- kruskal.test(adi ~ cd_projeto_principal, data = dados_teste)
   
-  # Visualização: Ridge Plot (distribuições de ADI por subsistema)
-  p9 <- ggplot(dados_teste, 
-               aes(x = adi, y = cd_projeto_principal, fill = cd_projeto_principal)) +
-    geom_density_ridges(alpha = 0.7, scale = 1.5) +
-    scale_x_log10(labels = comma) +
-    scale_fill_brewer(palette = "Set3") +
-    theme_ridges() +
-    labs(
-      title = "Distribuição de ADI por Subsistema",
-      subtitle = "Densidade estimada do Average inter-Demand Interval",
-      x = "ADI (escala log)", 
-      y = "Subsistema"
-    ) +
-    theme(legend.position = "none")
+  cat(sprintf("\n📊 Teste Kruskal-Wallis: ADI entre Subsistemas\n"))
+  cat(sprintf("   H = %.2f, p-valor = %.4f\n", teste_adi$statistic, teste_adi$p.value))
   
-  ggsave(
-    here(config$paths$output$figures, "03_exploratory", "09_ridge_adi_subsistema.png"),
-    plot = p9,
-    width = 12, height = 8, dpi = 300
-  )
+  # Teste Kruskal-Wallis para CV² médio entre subsistemas
+  teste_cv2 <- kruskal.test(cv2 ~ cd_projeto_principal, data = dados_teste)
   
-  cat("   ✅ Gráfico salvo: 09_ridge_adi_subsistema.png\n")
+  cat(sprintf("\n📊 Teste Kruskal-Wallis: CV² entre Subsistemas\n"))
+  cat(sprintf("   H = %.2f, p-valor = %.4f\n", teste_cv2$statistic, teste_cv2$p.value))
+} else {
+  cat("\n⚠️  Dados insuficientes para testes Kruskal-Wallis\n")
 }
+
+# Visualização: Ridge Plot (distribuições de ADI por subsistema)
+p9 <- ggplot(dados_teste, 
+             aes(x = adi, y = cd_projeto_principal, fill = cd_projeto_principal)) +
+  geom_density_ridges(alpha = 0.7, scale = 1.5) +
+  scale_x_log10(labels = comma) +
+  scale_fill_brewer(palette = "Set3") +
+  theme_ridges() +
+  labs(
+    title = "Distribuição de ADI por Subsistema",
+    subtitle = "Densidade estimada do Average inter-Demand Interval",
+    x = "ADI (escala log)", 
+    y = "Subsistema"
+  ) +
+  theme(legend.position = "none")
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "09_ridge_adi_subsistema.png"),
+  plot = p9,
+  width = 12, height = 8, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 09_ridge_adi_subsistema.png\n")
+
 
 log_message("Análise por subsistema concluída", "INFO")
 
