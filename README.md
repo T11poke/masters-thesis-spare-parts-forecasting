@@ -52,11 +52,15 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 04a_baseline_models_forecast.R
 
-04b_adida_models_forecast.R
+04b_intermittent_models_forecast.R
 
-05_analyze_results.R
+04c_adida_models_forecast.R
 
-06_advanced_error_visualization.R
+05_consolidate_results.R
+
+06_analyze_results.R
+
+07_advanced_error_visualization.R
 
 ## 📊 Estrutura do Projeto
 
