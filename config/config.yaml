@@ -1,7 +1,7 @@
 # =============================================================================
 # ARQUIVO DE CONFIGURAÇÃO - Projeto Previsão de Demanda SISCEAB
 # =============================================================================
-# Versão: 2.0.0
+# Versão: 2.0.1
 # Atualizada em 2025-11-27
 
 project:
@@ -40,24 +40,44 @@ parameters:
     train_min_months: 36
   forecasting:
     horizon: 12
-    methods:
+    baseline_methods:
       - 'naive'
       - 'mean'
       - 'moving_average'
+      - 'arima'
+      - 'ets'
+      - 'holt_winters_additive'
+      - 'holt_winters_multiplicative'
+    intermittent_methods:
       - 'croston'
       - 'sba'
       - 'tsb'
-      - 'arima'
-      - 'ets'
-      - 'poisson'
+      probabilistic_methods:
+      - 'poisson'        # Método atual DECEA
       - 'gamma'
-      - 'adida'
+      adida:
+        enabled: true
+        aggregation_levels: [3, 12]  # k=3 (trimestral), k=12 (anual)
+        base_methods: ['mean', 'croston']
   metrics:
-    - 'mae'
-    - 'rmse'
-    - 'bias'
-    - 'linlin'
-    - 'mad_mean_ratio'
+    primary:
+      - 'mae'                   # Mean Absolute Error
+      - 'rmse'                  # Root Mean Squared Error
+      - 'bias'                  # Mean Error
+      - 'linlin'                # Asymmetric Loss
+      - 'mad_mean_ratio'        # MAD/Mean Ratio
+    
+    # Perspectivas de avaliação
+    perspectives:
+      - 'monthly'               # Acurácia mês a mês
+      - 'annual'                # Acurácia anual agregada
+    
+    # Parâmetros de métricas específicas
+    linlin:
+      p: 0.85                   # Penalização assimétrica (razão custo 5.7:1)
+      # p=0.5 → simétrico (MAE)
+      # p>0.5 → penaliza subestimação
+      # p<0.5 → penaliza superestimação
   sbc:
     adi_threshold: 1.32
     cv2_threshold: 0.49
