@@ -969,67 +969,8 @@ ggsave(
     width = 10, height = 8, dpi = 300
   )
   
-  cat("   ✅ Gráfico salvo: 08_volume_demanda_subsistema.png\n")
+cat("   ✅ Gráfico salvo: 08_volume_demanda_subsistema.png\n")
   
-## 3.3. Comparação Entre Subsistemas (Testes Estatísticos) ####
-
-cat("\n📊 3.3. Comparando subsistemas estatisticamente...\n")
-
-# Preparar dados para testes
-dados_teste <- map_dfr(
-  names(splits_list),
-  function(origem_nome) {
-    split <- splits_list[[origem_nome]]
-    
-    split$sbc_classification %>%
-      filter(!is.na(cd_projeto)) %>%
-      mutate(
-        cd_projeto_principal = str_split_fixed(cd_projeto, ";", 2)[,1],
-        origem = origem_nome
-      )
-  }
-)
-
-# Teste Kruskal-Wallis para ADI médio entre subsistemas
-if (n_distinct(dados_teste$cd_projeto_principal) >= 2) {
-  teste_adi <- kruskal.test(adi ~ cd_projeto_principal, data = dados_teste)
-  
-  cat(sprintf("\n📊 Teste Kruskal-Wallis: ADI entre Subsistemas\n"))
-  cat(sprintf("   H = %.2f, p-valor = %.4f\n", teste_adi$statistic, teste_adi$p.value))
-  
-  # Teste Kruskal-Wallis para CV² médio entre subsistemas
-  teste_cv2 <- kruskal.test(cv2 ~ cd_projeto_principal, data = dados_teste)
-  
-  cat(sprintf("\n📊 Teste Kruskal-Wallis: CV² entre Subsistemas\n"))
-  cat(sprintf("   H = %.2f, p-valor = %.4f\n", teste_cv2$statistic, teste_cv2$p.value))
-} else {
-  cat("\n⚠️  Dados insuficientes para testes Kruskal-Wallis\n")
-}
-
-# Visualização: Ridge Plot (distribuições de ADI por subsistema)
-p9 <- ggplot(dados_teste, 
-             aes(x = adi, y = cd_projeto_principal, fill = cd_projeto_principal)) +
-  geom_density_ridges(alpha = 0.7, scale = 1.5) +
-  scale_x_log10(labels = comma) +
-  scale_fill_brewer(palette = "Set3") +
-  theme_ridges() +
-  labs(
-    title = "Distribuição de ADI por Subsistema",
-    subtitle = "Densidade estimada do Average inter-Demand Interval",
-    x = "ADI (escala log)", 
-    y = "Subsistema"
-  ) +
-  theme(legend.position = "none")
-
-ggsave(
-  here(config$paths$output$figures, "03_exploratory", "09_ridge_adi_subsistema.png"),
-  plot = p9,
-  width = 12, height = 8, dpi = 300
-)
-
-cat("   ✅ Gráfico salvo: 09_ridge_adi_subsistema.png\n")
-
-
 log_message("Análise por subsistema concluída", "INFO")
 
 # =============================================================================
