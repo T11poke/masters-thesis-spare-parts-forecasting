@@ -542,11 +542,33 @@ calcular_stats_categoria <- function(train_data, sbc_data) {
 stats_por_categoria <- map_dfr(
   names(splits_list),
   function(origem_nome) {
-    split <- splits_list[[origem_nome]]
-    calcular_stats_categoria(split$train, split$sbc_classification) %>%
-      mutate(origem = origem_nome)
+    origem_split <- splits_list[[origem_nome]]
+    
+    # Extrair período para label
+    periodo_treino <- sprintf(
+      "%s a %s",
+      format(min(origem_split$train$data_competencia), "%Y-%m"),
+      format(max(origem_split$train$data_competencia), "%Y-%m")
+    )
+    
+    calcular_stats_categoria(origem_split$train, origem_split$sbc_classification) %>%
+      mutate(
+        origem_id = origem_nome,
+        periodo = periodo_treino
+      )
   }
 )
+
+cat("\n📋 Estatísticas por Categoria e Origem:\n")
+print(stats_por_categoria, n = Inf)
+
+# Exportar tabela detalhada por origem
+write_csv(
+  stats_por_categoria,
+  here(config$paths$output$tables, "03_exploratory", "stats_categoria_por_origem.csv")
+)
+
+cat("\n   ✅ Tabela exportada: stats_categoria_por_origem.csv\n")
 
 # Tabela consolidada (média entre origens)
 stats_consolidadas <- stats_por_categoria %>%
@@ -557,43 +579,179 @@ stats_consolidadas <- stats_por_categoria %>%
   ) %>%
   arrange(desc(n_materiais))
 
-cat("\nEstatísticas Consolidadas por Categoria SBC (média entre origens):\n")
+cat("\n📊 Estatísticas Consolidadas (média entre origens):\n")
 print(stats_consolidadas, n = Inf)
 
-# Exportar tabela formatada
-stats_consolidadas %>% write_xlsx(
-  here(config$paths$output$tables, "03_exploratory", "stats_descritivas_por_categoria.xlsx")
+# Exportar tabela consolidada
+write_csv(
+  stats_consolidadas,
+  here(config$paths$output$tables, "03_exploratory", "stats_descritivas_por_categoria.csv")
 )
 
-cat("\n   ✅ Tabela exportada: stats_descritivas_por_categoria.xlsx \n")
+cat("\n   ✅ Tabela exportada: stats_descritivas_por_categoria.csv\n")
+
+# Visualização 1: Heatmap de características por categoria e origem
+p_heatmap_stats <- stats_por_categoria %>%
+  select(periodo, categoria_sbc, adi_mediana, cv2_mediana, prop_zeros_mediana) %>%
+  pivot_longer(
+    cols = c(adi_mediana, cv2_mediana, prop_zeros_mediana),
+    names_to = "metrica",
+    values_to = "valor"
+  ) %>%
+  mutate(
+    metrica = case_when(
+      metrica == "adi_mediana" ~ "ADI Mediano",
+      metrica == "cv2_mediana" ~ "CV² Mediano",
+      metrica == "prop_zeros_mediana" ~ "Prop. Zeros Mediana"
+    )
+  ) %>%
+  ggplot(aes(x = periodo, y = categoria_sbc, fill = valor)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = sprintf("%.2f", valor)), 
+            color = "white", fontface = "bold", size = 3.5) +
+  facet_wrap(~metrica, scales = "free", ncol = 1) +
+  scale_fill_viridis_c(option = "plasma") +
+  labs(
+    title = "Evolução das Características por Categoria SBC",
+    subtitle = "Valores medianos de ADI, CV² e Proporção de Zeros por origem temporal",
+    x = "Período de Treino",
+    y = "Categoria SBC",
+    fill = "Valor"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold", size = 11)
+  )
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "05a_heatmap_stats_categoria_origem.png"),
+  plot = p_heatmap_stats,
+  width = 12, height = 10, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 05a_heatmap_stats_categoria_origem.png\n")
+
+# Visualização 2: Evolução temporal de características por categoria
+p_evolucao_stats <- stats_por_categoria %>%
+  select(periodo, categoria_sbc, adi_mediana, cv2_mediana, demanda_media_mediana) %>%
+  pivot_longer(
+    cols = c(adi_mediana, cv2_mediana, demanda_media_mediana),
+    names_to = "metrica",
+    values_to = "valor"
+  ) %>%
+  mutate(
+    metrica = case_when(
+      metrica == "adi_mediana" ~ "ADI Mediano",
+      metrica == "cv2_mediana" ~ "CV² Mediano",
+      metrica == "demanda_media_mediana" ~ "Demanda Média Mediana"
+    )
+  ) %>%
+  ggplot(aes(x = periodo, y = valor, color = categoria_sbc, group = categoria_sbc)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  facet_wrap(~metrica, scales = "free_y", ncol = 1) +
+  scale_color_nejm() +
+  labs(
+    title = "Evolução Temporal das Características por Categoria SBC",
+    subtitle = "Tendências de ADI, CV² e Demanda Média ao longo das origens temporais",
+    x = "Período de Treino",
+    y = "Valor",
+    color = "Categoria SBC"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold", size = 11),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "05b_evolucao_stats_categoria.png"),
+  plot = p_evolucao_stats,
+  width = 12, height = 10, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 05b_evolucao_stats_categoria.png\n")
+
+# Visualização 3: Comparação de distribuições (box plots por origem)
+p_boxplot_comparacao <- stats_por_categoria %>%
+  select(periodo, categoria_sbc, adi_mediana, cv2_mediana, prop_zeros_mediana) %>%
+  pivot_longer(
+    cols = c(adi_mediana, cv2_mediana, prop_zeros_mediana),
+    names_to = "metrica",
+    values_to = "valor"
+  ) %>%
+  mutate(
+    metrica = case_when(
+      metrica == "adi_mediana" ~ "ADI Mediano",
+      metrica == "cv2_mediana" ~ "CV² Mediano",
+      metrica == "prop_zeros_mediana" ~ "Prop. Zeros"
+    )
+  ) %>%
+  ggplot(aes(x = categoria_sbc, y = valor, fill = categoria_sbc)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_point(aes(color = periodo), size = 3, position = position_jitter(width = 0.1)) +
+  facet_wrap(~metrica, scales = "free_y", ncol = 3) +
+  scale_fill_lancet() +
+  scale_color_viridis_d(option = "turbo") +
+  labs(
+    title = "Variabilidade Temporal das Características por Categoria",
+    subtitle = "Distribuição dos valores medianos através das 4 origens temporais",
+    x = "Categoria SBC",
+    y = "Valor",
+    fill = "Categoria",
+    color = "Período"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold", size = 11),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "05c_boxplot_variabilidade_temporal.png"),
+  plot = p_boxplot_comparacao,
+  width = 14, height = 8, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 05c_boxplot_variabilidade_temporal.png\n")
 
 ## 2.2. Visualizações por Categoria ####
 
 cat("\n📊 2.2. Gerando visualizações por categoria...\n")
 
-# Scatter Plot: ADI vs CV² com categorias coloridas
-p5 <- ggplot(todas_classificacoes, aes(x = adi, y = cv2, color = categoria_sbc)) +
-  geom_point(alpha = 0.5, size = 2) +
+# Scatter Plot: ADI vs CV² com categorias coloridas e origens diferenciadas
+p5 <- ggplot(todas_classificacoes, 
+             aes(x = adi, y = cv2, color = categoria_sbc, shape = as.factor(origem_id))) +
+  geom_point(alpha = 0.6, size = 2.5) +
   geom_vline(xintercept = 1.32, linetype = "dashed", color = "gray40", linewidth = 0.8) +
   geom_hline(yintercept = 0.49, linetype = "dashed", color = "gray40", linewidth = 0.8) +
   scale_x_log10(labels = comma) +
   scale_y_log10(labels = comma) +
   scale_color_nejm() +
+  scale_shape_manual(
+    values = c(16, 17, 15, 18),  # Círculo, triângulo, quadrado, diamante
+    labels = function(x) paste("Origem", x)
+  ) +
   labs(
-    title = "Classificação SBC: ADI vs CV²",
+    title = "Classificação SBC: ADI vs CV² por Origem Temporal",
     subtitle = "Linhas tracejadas indicam limiares de classificação",
     x = "ADI (Average inter-Demand Interval, escala log)",
     y = "CV² (Coeficiente de Variação ao Quadrado, escala log)",
-    color = "Categoria"
-  )
+    color = "Categoria",
+    shape = "Origem"
+  ) +
+  theme(legend.position = "bottom")
 
 ggsave(
-  here(config$paths$output$figures, "03_exploratory", "05_scatter_adi_cv2_categorias.png"),
+  here(config$paths$output$figures, "03_exploratory", "05d_scatter_adi_cv2_categorias.png"),
   plot = p5,
   width = 12, height = 8, dpi = 300
 )
 
-cat("   ✅ Gráfico salvo: 05_scatter_adi_cv2_categorias.png\n")
+cat("   ✅ Gráfico salvo: 05d_scatter_adi_cv2_categorias.png\n")
 
 ## 2.3. Seleção Fundamentada de 5 Materiais Exemplo ####
 
