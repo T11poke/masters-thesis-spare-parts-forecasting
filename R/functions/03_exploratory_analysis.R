@@ -13,6 +13,7 @@ library(here)
 library(tidyverse)
 library(tsibble)
 library(lubridate)
+library(writexl)
 
 library(ggplot2)
 library(ggsci)          # Paletas de cores científicas
@@ -560,12 +561,11 @@ cat("\nEstatísticas Consolidadas por Categoria SBC (média entre origens):\n")
 print(stats_consolidadas, n = Inf)
 
 # Exportar tabela formatada
-write_csv(
-  stats_consolidadas,
-  here(config$paths$output$tables, "03_exploratory", "stats_descritivas_por_categoria.csv")
+stats_consolidadas %>% write_xlsx(
+  here(config$paths$output$tables, "03_exploratory", "stats_descritivas_por_categoria.xlsx")
 )
 
-cat("\n   ✅ Tabela exportada: stats_descritivas_por_categoria.csv\n")
+cat("\n   ✅ Tabela exportada: stats_descritivas_por_categoria.xlsx \n")
 
 ## 2.2. Visualizações por Categoria ####
 
