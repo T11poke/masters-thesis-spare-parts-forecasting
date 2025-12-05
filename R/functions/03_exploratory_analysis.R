@@ -6,8 +6,6 @@
 # Data: 2025-12-04
 # Versão: 2.0.0
 #
-# IMPORTANTE: Toda análise é feita APENAS nos conjuntos de TREINO
-#             para evitar data leakage
 
 # Carregar configurações e bibliotecas ####
 
@@ -55,12 +53,12 @@ theme_set(
 log_message("Carregando dados processados do script anterior", "INFO")
 
 splits_list <- readRDS(here(config$paths$data$processed, "train_test_splits.rds"))
-ts_completa <- readRDS(here(config$paths$data$processed, "ts_completa.rds"))
+# ts_completa <- readRDS(here(config$paths$data$processed, "ts_completa.rds"))
 
 cat("\n📊 Dados carregados:\n")
 cat(sprintf("   - Número de origens temporais: %d\n", length(splits_list)))
-cat(sprintf("   - Total de materiais (ts_completa): %s\n", 
-            format(n_distinct(ts_completa$cd_material), big.mark = ",")))
+# cat(sprintf("   - Total de materiais (ts_completa): %s\n", 
+#             format(n_distinct(ts_completa$cd_material), big.mark = ",")))
 
 log_message("Dados carregados com sucesso", "INFO")
 
@@ -86,7 +84,9 @@ distribuicao_sbc <- map_dfr(
       count(categoria_sbc) %>%
       mutate(
         origem = origem_nome,
-        percentual = n / sum(n) * 100
+        percentual = n / sum(n) * 100,
+        # Formatar percentual para exibição
+        percentual_fmt = sprintf("%.1f%%", percentual)
       )
   }
 )
@@ -94,11 +94,205 @@ distribuicao_sbc <- map_dfr(
 # Tabela resumo
 cat("\nDistribuição de Categorias SBC:\n")
 distribuicao_sbc %>%
-  select(origem, categoria_sbc, n, percentual) %>%
+  select(origem, categoria_sbc, n, percentual_fmt) %>%
   arrange(origem, desc(n)) %>%
   print(n = Inf)
 
-# Visualização: Barras empilhadas comparando origens
+# Preparar dados para treemap
+dados_treemap <- distribuicao_sbc %>%
+  mutate(
+    # Criar identificador único para cada combinação origem-categoria
+    grupo = paste0(origem, "\n", categoria_sbc),
+    
+    # Labels informativos
+    label_detalhado = paste0(
+      categoria_sbc, "\n",
+      origem, "\n",
+      format(n, big.mark = ","), " materiais\n",
+      "(", percentual_fmt, ")"
+    ),
+    
+    # Cores personalizadas por categoria SBC
+    cor_categoria = case_when(
+      categoria_sbc == "Smooth" ~ "#2E8B57",        # Verde escuro
+      categoria_sbc == "Erratic" ~ "#FF6347",       # Vermelho tomate  
+      categoria_sbc == "Intermittent" ~ "#4169E1",  # Azul royal
+      categoria_sbc == "Lumpy" ~ "#FF8C00",         # Laranja escuro
+      TRUE ~ "#808080"                              # Cinza para outros
+    )
+  )
+
+# Visualização 1: Treemap Facetado por Origem
+p1a <- ggplot(dados_treemap, 
+              aes(area = n, fill = categoria_sbc, label = label_detalhado)) +
+  geom_treemap(color = "white", size = 2) +
+  geom_treemap_text(
+    color = "white",
+    place = "centre", 
+    size = 10,
+    fontface = "bold"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Smooth" = "#2E8B57",
+      "Erratic" = "#FF6347",
+      "Intermittent" = "#4169E1",
+      "Lumpy" = "#FF8C00"
+    ),
+    name = "Categoria SBC"
+  ) +
+  facet_wrap(~origem, ncol = 2) +
+  labs(
+    title = "Distribuição de Categorias SBC por Origem Temporal",
+    subtitle = "Classificação Syntetos-Boylan-Croston aplicada aos conjuntos de treino",
+    caption = "Tamanho do bloco = Quantidade de materiais | Cores fixas por categoria SBC"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5, margin = margin(b = 10)),
+    plot.caption = element_text(size = 9, hjust = 0.5, margin = margin(t = 10)),
+    strip.text = element_text(size = 12, face = "bold", margin = margin(b = 5)),
+    legend.position = "bottom",
+    legend.text = element_text(size = 10),
+    legend.title = element_text(size = 11, face = "bold")
+  )
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "01a_treemap_sbc_por_origem.png"),
+  plot = p1a,
+  width = 14, height = 10, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 01a_treemap_sbc_por_origem.png\n")
+
+# Visualização 2: Treemap Único (Todas as Origens Consolidadas)
+# Calcular totais consolidados entre origens
+dados_treemap_consolidado <- distribuicao_sbc %>%
+  group_by(categoria_sbc) %>%
+  summarise(
+    n_total = sum(n),
+    n_origens = n(),
+    percentual_medio = mean(percentual),
+    .groups = 'drop'
+  ) %>%
+  mutate(
+    percentual_fmt = sprintf("%.1f%%", percentual_medio),
+    
+    label_detalhado = paste0(
+      categoria_sbc, "\n",
+      format(n_total, big.mark = ","), " materiais\n",
+      "(", percentual_fmt, " médio)",
+      "\n", n_origens, " origens"
+    ),
+    
+    # Métrica de "complexidade" = desvio-padrão entre origens
+    # (maior desvio = mais variação temporal)
+    volatilidade = map_dbl(categoria_sbc, function(cat) {
+      sd(distribuicao_sbc$percentual[distribuicao_sbc$categoria_sbc == cat])
+    })
+  )
+
+p1b <- ggplot(dados_treemap_consolidado, 
+              aes(area = n_total, fill = volatilidade, label = label_detalhado)) +
+  geom_treemap(color = "white", size = 3) +
+  geom_treemap_text(
+    color = "white",
+    place = "centre", 
+    size = 14,
+    fontface = "bold",
+    lineheight = 0.9
+  ) +
+  scale_fill_gradient2(
+    low = "#1A5D1A",              # Verde escuro = Estável
+    mid = "#FFD700",              # Amarelo = Moderado
+    high = "#8B0000",             # Vermelho escuro = Volátil
+    midpoint = mean(dados_treemap_consolidado$volatilidade),
+    name = "Volatilidade\nTemporal\n(Desvio %)",
+    labels = function(x) sprintf("%.1f", x)
+  ) +
+  labs(
+    title = "Distribuição Consolidada de Categorias SBC",
+    subtitle = "Tamanho = Total de materiais | Cor = Volatilidade temporal (variação % entre origens)",
+    caption = "Verde = Categorias estáveis temporalmente | Vermelho = Categorias com alta variação entre origens"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5, margin = margin(b = 20)),
+    plot.caption = element_text(size = 10, hjust = 0.5, margin = margin(t = 15), lineheight = 1.2),
+    legend.position = "right",
+    legend.text = element_text(size = 11),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.key.height = unit(1.5, "cm")
+  )
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "01b_treemap_sbc_consolidado.png"),
+  plot = p1b,
+  width = 14, height = 10, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 01b_treemap_sbc_consolidado.png\n")
+
+# Visualização 3 (OPCIONAL): Gráfico de Barras Empilhadas Original
+# (Manter como alternativa para comparação simples)
+p1c <- ggplot(distribuicao_sbc, aes(x = origem, y = percentual, fill = categoria_sbc)) +
+  geom_col(color = "white", linewidth = 0.3) +
+  geom_text(
+    aes(label = percentual_fmt),
+    position = position_stack(vjust = 0.5),
+    color = "white", fontface = "bold", size = 3.5
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Smooth" = "#2E8B57",
+      "Erratic" = "#FF6347",
+      "Intermittent" = "#4169E1",
+      "Lumpy" = "#FF8C00"
+    ),
+    name = "Categoria SBC"
+  ) +
+  labs(
+    title = "Distribuição de Categorias SBC por Origem Temporal",
+    subtitle = "Classificação Syntetos-Boylan-Croston aplicada aos conjuntos de treino",
+    x = "Origem Temporal", 
+    y = "Proporção de Materiais (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    legend.position = "bottom"
+  )
+
+ggsave(
+  here(config$paths$output$figures, "03_exploratory", "01c_barras_sbc_origens.png"),
+  plot = p1c,
+  width = 12, height = 8, dpi = 300
+)
+
+cat("   ✅ Gráfico salvo: 01c_barras_sbc_origens.png (alternativo)\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Visualização: Barras empilhadas comparando origens#######################
 p1 <- ggplot(distribuicao_sbc, aes(x = origem, y = percentual, fill = categoria_sbc)) +
   geom_col(color = "white", linewidth = 0.3) +
   geom_text(
