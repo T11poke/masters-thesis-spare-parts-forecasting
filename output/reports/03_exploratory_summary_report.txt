@@ -5,64 +5,102 @@ Data: 2025-12-05
 ═══════════════════════════════════════════════════════════════
 
 
-origem_1 - Período de Treino: 2016-01-01 a 2021-10-01
+origem_1 - Período de Treino: 2021-01-01 a 2024-10-01
 ═══════════════════════════════════════════════════════════════
 
 📊 DISTRIBUIÇÃO SBC:
-   - Smooth:          13 materiais (  0.5%)
-   - Erratic:         13 materiais (  0.5%)
-   - Intermittent:  1769 materiais ( 64.9%)
-   - Lumpy:          929 materiais ( 34.1%)
+   - Smooth:          17 materiais (  0.7%)
+   - Erratic:         17 materiais (  0.7%)
+   - Intermittent:  1554 materiais ( 62.6%)
+   - Lumpy:          895 materiais ( 36.0%)
+   
+📈 CARACTERÍSTICAS MÉDIAS:
+   - ADI Mediano:                9.20
+   - CV² Mediano:                0.31
+   - Proporção Zeros:            83.6%
+   - Demanda Média (μz):          2.3 unidades
+   
+⚠️  MATERIAIS EXCLUÍDOS:     12181
+
+
+
+origem_2 - Período de Treino: 2020-01-01 a 2024-10-01
+═══════════════════════════════════════════════════════════════
+
+📊 DISTRIBUIÇÃO SBC:
+   - Smooth:          14 materiais (  0.5%)
+   - Erratic:         15 materiais (  0.5%)
+   - Intermittent:  1827 materiais ( 63.7%)
+   - Lumpy:         1010 materiais ( 35.2%)
+   
+📈 CARACTERÍSTICAS MÉDIAS:
+   - ADI Mediano:               11.60
+   - CV² Mediano:                0.30
+   - Proporção Zeros:            85.9%
+   - Demanda Média (μz):          2.2 unidades
+   
+⚠️  MATERIAIS EXCLUÍDOS:     11798
+
+
+
+origem_3 - Período de Treino: 2019-01-01 a 2024-10-01
+═══════════════════════════════════════════════════════════════
+
+📊 DISTRIBUIÇÃO SBC:
+   - Smooth:          13 materiais (  0.4%)
+   - Erratic:         15 materiais (  0.4%)
+   - Intermittent:  2126 materiais ( 63.2%)
+   - Lumpy:         1212 materiais ( 36.0%)
    
 📈 CARACTERÍSTICAS MÉDIAS:
    - ADI Mediano:               14.00
-   - CV² Mediano:                0.27
-   - Proporção Zeros:            87.3%
-   - Demanda Média (μz):          2.0 unidades
+   - CV² Mediano:                0.31
+   - Proporção Zeros:            87.7%
+   - Demanda Média (μz):          2.2 unidades
    
-⚠️  MATERIAIS EXCLUÍDOS:     11940
+⚠️  MATERIAIS EXCLUÍDOS:     11298
 
 
 
-origem_2 - Período de Treino: 2016-01-01 a 2022-10-01
+origem_4 - Período de Treino: 2018-01-01 a 2024-10-01
 ═══════════════════════════════════════════════════════════════
 
 📊 DISTRIBUIÇÃO SBC:
-   - Smooth:          12 materiais (  0.4%)
-   - Erratic:         12 materiais (  0.4%)
-   - Intermittent:  2105 materiais ( 64.3%)
-   - Lumpy:         1144 materiais ( 35.0%)
+   - Smooth:           8 materiais (  0.2%)
+   - Erratic:         13 materiais (  0.4%)
+   - Intermittent:  2303 materiais ( 62.6%)
+   - Lumpy:         1352 materiais ( 36.8%)
    
 📈 CARACTERÍSTICAS MÉDIAS:
    - ADI Mediano:               16.40
-   - CV² Mediano:                0.30
-   - Proporção Zeros:            88.8%
-   - Demanda Média (μz):          2.1 unidades
+   - CV² Mediano:                0.32
+   - Proporção Zeros:            88.9%
+   - Demanda Média (μz):          2.3 unidades
    
-⚠️  MATERIAIS EXCLUÍDOS:     11391
+⚠️  MATERIAIS EXCLUÍDOS:     10988
 
 
 
-origem_3 - Período de Treino: 2016-01-01 a 2023-10-01
+origem_5 - Período de Treino: 2017-01-01 a 2024-10-01
 ═══════════════════════════════════════════════════════════════
 
 📊 DISTRIBUIÇÃO SBC:
    - Smooth:           7 materiais (  0.2%)
-   - Erratic:         15 materiais (  0.4%)
-   - Intermittent:  2335 materiais ( 62.5%)
-   - Lumpy:         1381 materiais ( 36.9%)
+   - Erratic:         14 materiais (  0.3%)
+   - Intermittent:  2487 materiais ( 62.1%)
+   - Lumpy:         1495 materiais ( 37.3%)
    
 📈 CARACTERÍSTICAS MÉDIAS:
    - ADI Mediano:               18.80
-   - CV² Mediano:                0.31
-   - Proporção Zeros:            89.8%
-   - Demanda Média (μz):          2.2 unidades
+   - CV² Mediano:                0.32
+   - Proporção Zeros:            89.9%
+   - Demanda Média (μz):          2.3 unidades
    
-⚠️  MATERIAIS EXCLUÍDOS:     10926
+⚠️  MATERIAIS EXCLUÍDOS:     10661
 
 
 
-origem_4 - Período de Treino: 2016-01-01 a 2024-10-01
+origem_6 - Período de Treino: 2016-01-01 a 2024-10-01
 ═══════════════════════════════════════════════════════════════
 
 📊 DISTRIBUIÇÃO SBC:
