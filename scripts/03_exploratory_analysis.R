@@ -4,7 +4,7 @@
 # Descrição: Caracterização dos padrões de demanda segundo taxonomia SBC,
 #            análise descritiva por categoria, subsistema e temporal
 # Data: 2025-12-04
-# Versão: 2.0.0
+# Versão: 2.1.0
 #
 
 # Carregar configurações e bibliotecas ####
@@ -146,7 +146,8 @@ p1a <- ggplot(dados_treemap,
       "Smooth" = "#2E8B57",
       "Erratic" = "#FF6347",
       "Intermittent" = "#4169E1",
-      "Lumpy" = "#FF8C00"
+      "Lumpy" = "#FF8C00",
+      "Outros" = "#808080"
     ),
     name = "Categoria SBC"
   ) +
@@ -282,7 +283,8 @@ p1c <- ggplot(distribuicao_sbc, aes(x = origem, y = percentual, fill = categoria
       "Smooth" = "#2E8B57",
       "Erratic" = "#FF6347",
       "Intermittent" = "#4169E1",
-      "Lumpy" = "#FF8C00"
+      "Lumpy" = "#FF8C00",
+      "Outros" = "#808080"
     ),
     name = "Categoria SBC"
   ) +
@@ -1075,6 +1077,170 @@ materiais_excluidos_consolidado %>%
   summarise(n_excluidos = n(), .groups = 'drop') %>%
   arrange(origem) %>%
   print()
+
+
+## 5.2. ANÁLISE DETALHADA: Categoria Dados_Insuficientes #### 
+
+cat("\n📊 5.2. Caracterização da categoria Dados_Insuficientes...\n")
+
+# Consolidar classificações SBC incluindo Dados_Insuficientes
+todos_dados_insuficientes <- map_dfr(
+  names(splits_list),
+  function(origem_nome) {
+    splits_list[[origem_nome]]$sbc_classification %>%
+      filter(categoria_sbc == "Dados_Insuficientes") %>%
+      mutate(
+        origem = origem_nome,
+        origem_id = splits_list[[origem_nome]]$metadata$origem_id
+      )
+  }
+)
+
+if (nrow(todos_dados_insuficientes) > 0) {
+  
+  cat(sprintf("\n   📌 Total de classificações 'Dados_Insuficientes': %s\n", 
+              format(nrow(todos_dados_insuficientes), big.mark = ",")))
+  
+  cat(sprintf("   📌 Materiais únicos nesta categoria: %s\n", 
+              format(n_distinct(todos_dados_insuficientes$cd_material), big.mark = ",")))
+  
+  # Distribuição por origem
+  cat("\n   Distribuição por origem temporal:\n")
+  dist_origem <- todos_dados_insuficientes %>%
+    count(origem, name = "n_materiais") %>%
+    mutate(percentual = n_materiais / sum(n_materiais) * 100) %>%
+    arrange(origem)
+  
+  print(dist_origem)
+  
+  # Características dos materiais insuficientes
+  cat("\n   📈 Características dos materiais Dados_Insuficientes:\n")
+  
+  stats_insuficientes <- todos_dados_insuficientes %>%
+    summarise(
+      n_demandas_min = min(n_demandas, na.rm = TRUE),
+      n_demandas_max = max(n_demandas, na.rm = TRUE),
+      n_demandas_mediana = median(n_demandas, na.rm = TRUE),
+      n_demandas_media = mean(n_demandas, na.rm = TRUE),
+      .groups = 'drop'
+    )
+  
+  cat(sprintf("      - Mínimo de demandas: %d\n", stats_insuficientes$n_demandas_min))
+  cat(sprintf("      - Máximo de demandas: %d\n", stats_insuficientes$n_demandas_max))
+  cat(sprintf("      - Mediana de demandas: %.1f\n", stats_insuficientes$n_demandas_mediana))
+  cat(sprintf("      - Média de demandas: %.1f\n", stats_insuficientes$n_demandas_media))
+  
+  # Análise de persistência (materiais que ficam insuficientes em múltiplas origens)
+  cat("\n   🔄 Análise de persistência:\n")
+  
+  persistencia <- todos_dados_insuficientes %>%
+    group_by(cd_material) %>%
+    summarise(
+      n_origens_insuficiente = n_distinct(origem),
+      .groups = 'drop'
+    )
+  
+  cat("\n   Materiais por número de origens onde são 'Dados_Insuficientes':\n")
+  persistencia %>%
+    count(n_origens_insuficiente, name = "n_materiais") %>%
+    mutate(percentual = n_materiais / sum(n_materiais) * 100) %>%
+    arrange(desc(n_origens_insuficiente)) %>%
+    print()
+  
+  # Identificar materiais persistentemente insuficientes
+  materiais_sempre_insuficientes <- persistencia %>%
+    filter(n_origens_insuficiente == length(splits_list)) %>%
+    pull(cd_material)
+  
+  if (length(materiais_sempre_insuficientes) > 0) {
+    cat(sprintf("\n   ⚠️  %s materiais são 'Dados_Insuficientes' em TODAS as origens\n",
+                format(length(materiais_sempre_insuficientes), big.mark = ",")))
+    cat("      Estes materiais têm demanda extremamente rara e podem:\n")
+    cat("      - Ser candidatos à descontinuação\n")
+    cat("      - Requerer gestão por exceção\n")
+    cat("      - Não ser adequados para previsão quantitativa\n")
+  }
+  
+  # Visualização 1: Distribuição de n_demandas
+  p_dist_demandas <- ggplot(todos_dados_insuficientes, 
+                            aes(x = n_demandas)) +
+    geom_histogram(binwidth = 1, fill = "#808080", alpha = 0.7, color = "white") +
+    geom_vline(xintercept = 3, linetype = "dashed", color = "red", linewidth = 1) +
+    annotate("text", x = 3, y = Inf, label = "Limiar = 3", 
+             vjust = 1.5, hjust = -0.1, color = "red", fontface = "bold") +
+    facet_wrap(~origem, ncol = 2) +
+    labs(
+      title = "Distribuição de Ocorrências de Demanda: Categoria Dados_Insuficientes",
+      subtitle = "Materiais com < 3 ocorrências no conjunto de treino",
+      x = "Número de Ocorrências de Demanda (n_demandas)",
+      y = "Frequência (nº de materiais)"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      strip.text = element_text(face = "bold")
+    )
+  
+  ggsave(
+    here(config$paths$output$figures, "03_exploratory", 
+         "05d_distribuicao_dados_insuficientes.png"),
+    plot = p_dist_demandas,
+    width = 12, height = 8, dpi = 300
+  )
+  
+  cat("\n   ✅ Gráfico salvo: 05d_distribuicao_dados_insuficientes.png\n")
+  
+  # Visualização 2: Evolução temporal (materiais insuficientes por origem)
+  p_evolucao_insuf <- dist_origem %>%
+    ggplot(aes(x = origem, y = n_materiais)) +
+    geom_col(fill = "#808080", alpha = 0.7) +
+    geom_text(aes(label = format(n_materiais, big.mark = ",")), 
+              vjust = -0.5, fontface = "bold") +
+    geom_line(aes(group = 1), color = "#808080", linewidth = 1) +
+    geom_point(size = 3, color = "#808080") +
+    scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.15))) +
+    labs(
+      title = "Evolução Temporal: Materiais com Dados_Insuficientes",
+      subtitle = "Número de materiais classificados como insuficientes em cada origem",
+      x = "Origem Temporal",
+      y = "Nº de Materiais"
+    ) +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+  
+  ggsave(
+    here(config$paths$output$figures, "03_exploratory", 
+         "05e_evolucao_dados_insuficientes.png"),
+    plot = p_evolucao_insuf,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  cat("   ✅ Gráfico salvo: 05e_evolucao_dados_insuficientes.png\n")
+  
+  # Exportar lista de materiais persistentemente insuficientes
+  if (length(materiais_sempre_insuficientes) > 0) {
+    
+    detalhes_sempre_insuf <- todos_dados_insuficientes %>%
+      filter(cd_material %in% materiais_sempre_insuficientes) %>%
+      select(cd_material, origem, n_demandas, n_periodos, adi, demanda_media) %>%
+      arrange(cd_material, origem)
+    
+    write_xlsx(
+      detalhes_sempre_insuf,
+      here(config$paths$output$tables, "03_exploratory", 
+           "materiais_persistentemente_insuficientes.xlsx")
+    )
+    
+    cat("\n   ✅ Lista exportada: materiais_persistentemente_insuficientes.xlsx\n")
+  }
+  
+} else {
+  cat("\n   ℹ️  Nenhum material classificado como 'Dados_Insuficientes'\n")
+  cat("      (Todos os materiais atenderam critério mínimo de 3 ocorrências)\n")
+}
 
 # Visualização: Proporção de exclusões por origem
 p12 <- materiais_excluidos_consolidado %>%
