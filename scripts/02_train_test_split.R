@@ -4,7 +4,7 @@
 # Descrição: Implementa estratégia de validação rolling origin com janela
 #            expansiva, classificação SBC por origem e validações de integridade
 # Data: 2025-12-03
-# Versão: 2.0.0
+# Versão: 2.1.0
 
 # Carregar configurações e bibliotecas ####
 library(here)

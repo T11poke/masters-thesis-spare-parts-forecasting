@@ -383,15 +383,15 @@ filtrar_materiais_insuficientes <- function(train, min_occurrences = 3, origem_i
     ) %>%
     dplyr::filter(n_ocorrencias < min_occurrences)
   
-  n_excluidos <- nrow(materiais_insuficientes)
+  n_insuficientes <- nrow(materiais_insuficientes)
   
-  if (n_excluidos > 0) {
-    cat(sprintf("      ⚠️  %s materiais serão excluídos desta origem\n", 
-                format(n_excluidos, big.mark = ",")))
+  if (n_insuficientes > 0) {
+    cat(sprintf("      ⚠️  %s materiais serão excluídos da SBC\n", 
+                format(n_insuficientes, big.mark = ",")))
     
     # Filtrar dados
-    train_filtrado <- train %>%
-      dplyr::filter(!cd_material %in% materiais_insuficientes$cd_material)
+    # train_filtrado <- train %>%
+    #   dplyr::filter(!cd_material %in% materiais_insuficientes$cd_material)
     
   } else {
     cat("      ✅ Todos os materiais atendem critério mínimo\n")
@@ -399,7 +399,8 @@ filtrar_materiais_insuficientes <- function(train, min_occurrences = 3, origem_i
   }
   
   list(
-    data_filtrado = train_filtrado,
+    data_filtrado = train,  # Retorna dados completos
+    # data_filtrado = train_filtrado, # retorna dados filtrados
     materiais_excluidos = materiais_insuficientes %>%
       dplyr::mutate(
         origem_id = origem_id,
@@ -477,6 +478,7 @@ classificar_sbc_origem <- function(train, adi_threshold = 1.32, cv2_threshold = 
     # Aplicar classificação SBC
     dplyr::mutate(
       categoria_sbc = dplyr::case_when(
+        n_demandas < config$parameters$data_cleaning$min_occurrences,
         adi <= adi_threshold & cv2 < cv2_threshold ~ "Smooth",
         adi <= adi_threshold & cv2 >= cv2_threshold ~ "Erratic",
         adi > adi_threshold & cv2 < cv2_threshold ~ "Intermittent",
@@ -488,7 +490,11 @@ classificar_sbc_origem <- function(train, adi_threshold = 1.32, cv2_threshold = 
     # Tratar casos especiais (NaN, Inf)
     dplyr::mutate(
       cv2 = ifelse(is.nan(cv2) | is.infinite(cv2), NA_real_, cv2),
-      categoria_sbc = ifelse(is.na(cv2), "Dados_Insuficientes", categoria_sbc)
+      categoria_sbc = ifelse(
+        is.na(cv2) & n_demandas >= config$parameters$data_cleaning$min_occurrences,
+        "Indefinido",
+        categoria_sbc
+        )
     )
   
   # Resumo da classificação
