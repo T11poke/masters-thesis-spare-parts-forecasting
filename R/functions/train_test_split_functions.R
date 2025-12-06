@@ -478,7 +478,7 @@ classificar_sbc_origem <- function(train, adi_threshold = 1.32, cv2_threshold = 
     # Aplicar classificação SBC
     dplyr::mutate(
       categoria_sbc = dplyr::case_when(
-        n_demandas < config$parameters$data_cleaning$min_occurrences,
+        n_demandas < config$parameters$data_cleaning$min_occurrences ~ "Indefinido",
         adi <= adi_threshold & cv2 < cv2_threshold ~ "Smooth",
         adi <= adi_threshold & cv2 >= cv2_threshold ~ "Erratic",
         adi > adi_threshold & cv2 < cv2_threshold ~ "Intermittent",
