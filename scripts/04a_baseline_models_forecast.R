@@ -478,7 +478,7 @@ DEBUG_MODE <- Sys.getenv("FORECAST_DEBUG", "FALSE") == "TRUE" ||
 if(DEBUG_MODE) {
   cat("\n")
   cat("╔════════════════════════════════════════════════════════════╗\n")
-  cat("║                    🔧 MODO DEBUG ATIVO 🔧                  ║\n")
+  cat("║                   🔧 MODO DEBUG ATIVO 🔧                  ║\n")
   cat("╚════════════════════════════════════════════════════════════╝\n")
   cat("\n")
   cat("⚠️  Configurações de debug:\n")
@@ -633,7 +633,7 @@ for(origem_nome in names(splits_list)) {
   }
   
   # ===========================================================================
-  # EXECUÇÃO PARALELA ####
+  ## EXECUÇÃO PARALELA ####
   # ===========================================================================
   
   cat("\n🚀 Iniciando forecasting paralelo...\n")
@@ -712,18 +712,66 @@ for(origem_nome in names(splits_list)) {
       
     }) %>% flatten()  # Achatar lista de listas
   
-    # modo sequencial: - PAREI AQUI!!!! #####
+    # modo sequencial:
   } else {
-    
-    # Execução sequencial
-    forecasts_origem <- map(
-      materiais_elegiveis,
-      processar_material,
-      .progress = TRUE
+    pb <- progress::progress_bar$new(
+      format = "  [:bar] :percent | :current/:total materiais | ETA: :eta | Tempo: :elapsed",
+      total = n_elegiveis,
+      clear = FALSE,
+      width = 80
     )
+    
+    forecasts_origem <- map(materiais_elegiveis, function(mat) {
+      result <- processar_material(mat)
+      pb$tick()
+      return(result)
+    })
   }
   
-  toc()
+  tempo_total <- toc()
+  
+  # ===========================================================================
+  ## ESTATÍSTICAS DE EXECUÇÃO ####
+  # ===========================================================================
+  
+  cat("\n")
+  cat("📊 Estatísticas de execução:\n")
+  cat(sprintf("   - Materiais processados: %s\n",
+              format(length(forecasts_origem), big.mark = ",")))
+  cat(sprintf("   - Tempo total: %.1f segundos (%.1f minutos)\n",
+              tempo_total$toc - tempo_total$tic,
+              (tempo_total$toc - tempo_total$tic) / 60))
+  cat(sprintf("   - Tempo médio por material: %.2f segundos\n",
+              (tempo_total$toc - tempo_total$tic) / n_elegiveis))
+  cat(sprintf("   - Taxa de processamento: %.1f materiais/minuto\n",
+              n_elegiveis / ((tempo_total$toc - tempo_total$tic) / 60)))
+  
+  # Calcular tempo médio por método
+  tempo_por_metodo <- map_dfr(forecasts_origem, function(mat_fc) {
+    map_dfr(names(mat_fc$forecasts), function(metodo_nome) {
+      tibble(
+        metodo = metodo_nome,
+        execution_time = mat_fc$forecasts[[metodo_nome]]$execution_time
+      )
+    })
+  }) %>%
+    group_by(metodo) %>%
+    summarise(
+      n = n(),
+      tempo_medio = mean(execution_time, na.rm = TRUE),
+      tempo_total = sum(execution_time, na.rm = TRUE),
+      .groups = 'drop'
+    ) %>%
+    arrange(desc(tempo_total))
+  
+  cat("\n📈 Tempo de execução por método:\n")
+  tempo_por_metodo %>%
+    mutate(
+      tempo_medio_fmt = sprintf("%.3f seg", tempo_medio),
+      tempo_total_fmt = sprintf("%.1f seg", tempo_total)
+    ) %>%
+    select(metodo, tempo_medio_fmt, tempo_total_fmt) %>%
+    print(n = Inf)
   
   # ===========================================================================
   # VALIDAÇÃO E DIAGNÓSTICO ####
@@ -765,28 +813,60 @@ for(origem_nome in names(splits_list)) {
     )
   
   # ===========================================================================
-  # CHECKPOINT: SALVAR RESULTADOS DA ORIGEM ####
+  ## CHECKPOINT: SALVAR RESULTADOS DA ORIGEM ####
   # ===========================================================================
   
   forecasts_baseline[[origem_nome]] <- list(
     metadata = origem_split$metadata,
     forecasts = forecasts_origem,
-    convergence_summary = convergence_summary
+    convergence_summary = convergence_summary,
+    execution_stats = list(
+      n_materiais = n_elegiveis,
+      n_materiais_original = n_elegiveis_original,
+      debug_mode = DEBUG_MODE,
+      tempo_total_sec = tempo_total$toc - tempo_total$tic,
+      tempo_por_metodo = tempo_por_metodo,
+      timestamp = Sys.time()
+    )
   )
   
   # Salvar checkpoint
+  checkpoint_file <- if(DEBUG_MODE) {
+    sprintf("baseline_%s_DEBUG.rds", origem_nome)
+  } else {
+    sprintf("baseline_%s.rds", origem_nome)
+  }
+  
   saveRDS(
     forecasts_baseline[[origem_nome]],
-    here("output/checkpoints", sprintf("baseline_%s.rds", origem_nome))
+    here("output/checkpoints", checkpoint_file)
   )
   
-  cat(sprintf("\n✅ Checkpoint salvo: baseline_%s.rds\n", origem_nome))
+  cat(sprintf("\n✅ Checkpoint salvo: baseline_%s.rds\n", checkpoint_file))
   
   toc()
   
+  cat("\n", strrep("=", 70), "\n", sep = "")
 }  # FIM DO LOOP SOBRE ORIGENS
 
 log_message("Pipeline de forecasting concluído para todas as origens", "INFO")
 
+# ===========================================================================
+# RESUMO FINAL ####
+# ===========================================================================
 
+if(DEBUG_MODE) {
+  cat("\n")
+  cat("╔════════════════════════════════════════════════════════════╗\n")
+  cat("║            🔧 EXECUÇÃO EM MODO DEBUG 🔧                   ║\n")
+  cat("╚════════════════════════════════════════════════════════════╝\n")
+  cat("\n")
+  cat("⚠️  IMPORTANTE:\n")
+  cat("   - Esta foi uma execução de TESTE com subset reduzido\n")
+  cat("   - Resultados NÃO devem ser usados para análise final\n")
+  cat("   - Para execução completa, defina:\n")
+  cat("       Sys.setenv(FORECAST_DEBUG = 'FALSE')\n")
+  cat("       OU\n")
+  cat("       config$parameters$forecasting$debug_mode = FALSE\n\n")
+}
 
