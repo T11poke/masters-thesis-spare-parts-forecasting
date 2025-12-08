@@ -33,11 +33,17 @@ library(furrr)
 library(tictoc)
 library(writexl)
 library(progressr)
+library(future)
 
 source(here("R/utils/load_config.R"))
 source(here("R/functions/forecasting_functions.R"))
 
-handlers(handler_cli(clear = FALSE))
+# Configurar progresso
+if(interactive()) {
+  handlers(handler_cli(clear = FALSE))
+} else {
+  handlers(handler_txtprogressbar())
+}
 handlers(global = TRUE)
 
 set.seed(config$parameters$seed)
@@ -52,6 +58,14 @@ dir.create(here("output/forecasts/baseline"), showWarnings = FALSE, recursive = 
 dir.create(here("output/figures/04a_baseline"), showWarnings = FALSE, recursive = TRUE)
 dir.create(here("output/reports/04a_baseline"), showWarnings = FALSE, recursive = TRUE)
 dir.create(here("output/checkpoints"), showWarnings = FALSE, recursive = TRUE)
+
+# Configurar paralelização
+parallel::detectCores()
+if(config$computation$parallel) {
+  plan(multisession, workers = config$computation$n_cores)
+  log_message(sprintf("Paralelização ativada: %d cores", 
+                      config$computation$n_cores), "INFO")
+}
 
 # Carregar dados processados
 log_message("Carregando dados de train/test splits", "INFO")

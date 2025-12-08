@@ -6,9 +6,6 @@
 
 library(here)
 library(tictoc)
-library(future)
-library(tidyverse)
-
 
 source(here("R/utils/load_config.R"))
 config <- load_config()
@@ -47,14 +44,6 @@ if(DEBUG_MODE) {
   if(tolower(resposta) != "s") {
     stop("Execução cancelada pelo usuário")
   }
-}
-
-# Configurar paralelização
-parallel::detectCores()
-if(config$computation$parallel) {
-  plan(multisession, workers = config$computation$n_cores)
-  log_message(sprintf("Paralelização ativada: %d cores", 
-                      config$computation$n_cores), "INFO")
 }
 
 cat("\n")
