@@ -1,7 +1,7 @@
 # =============================================================================
 # ARQUIVO DE CONFIGURAÇÃO - Projeto Previsão de Demanda SISCEAB
 # =============================================================================
-# Versão: 2.0.1
+# Versão: 2.1.0
 # Atualizada em 2025-11-27
 
 project:
@@ -21,6 +21,8 @@ paths:
     tables: 'output/tables'
     models: 'output/models'
     reports: 'output/reports'
+    forecasts: 'output/forecasts'
+    checkpoints: 'output/checkpoints'
   logs: 'logs'
 
 data:
@@ -46,25 +48,50 @@ parameters:
     debug_n_origins: 1  # Número de origens em modo debug
     debug_chunk_size: 10  # Chunk size reduzido para debug
     
-    baseline_methods:
-      - 'naive'
-      - 'mean'
-      - 'moving_average'
-      - 'arima'
-      - 'ets'
-      - 'holt_winters_additive'
-      - 'holt_winters_multiplicative'
-    intermittent_methods:
-      - 'croston'
-      - 'sba'
-      - 'tsb'
-    probabilistic_methods:
-      - 'poisson'        # Método atual DECEA
-      - 'gamma'
-    adida:
+    # Configurações de paralelização
+    parallel:
       enabled: true
-      aggregation_levels: [3, 12]  # k=3 (trimestral), k=12 (anual)
-      base_methods: ['mean', 'croston']
+      n_cores: 8
+      chunk_size: 50
+    
+     # Família 1: Métodos Clássicos
+    moving_average:
+      window: 36
+    
+    # Família 2: Suavização Exponencial
+    arima:
+      max_p: 5
+      max_d: 2
+      max_q: 5
+      stepwise: true
+      approximation: false
+    
+    ets:
+      model: 'ZZN'              # Auto-seleção sem sazonalidade
+      damped: null              # Auto-seleção de damping
+    
+    holt_winters:
+      min_periods: 24           # Mínimo de observações para HW
+    
+    # Família 3: Métodos Intermitentes
+    intermittent:
+      optimize_alpha: true      # Otimizar alpha via CV temporal
+      alphas_grid: [0.05, 0.10, 0.15, 0.20, 0.25, 0.30]
+      cv_horizon: 6             # Horizonte de validação cruzada (meses)
+      init_method: 'mean'       # Inicialização: 'mean' ou 'naive'
+    
+    # Família 4: Métodos Probabilísticos
+    probabilistic:
+      service_level: 0.80       # Nível de serviço para quantis
+      gamma:
+        min_positive: 3         # Mínimo de valores positivos para estimar Gamma
+    
+    # Família 5: ADIDA
+    adida:
+      aggregation_levels: [3, 12]     # k=3 (trimestral), k=12 (anual)
+      base_methods: ['mean']          # Métodos base: 'mean', 'croston'
+      disaggregation: 'equal'         # 'equal' ou 'proportional'
+  
   metrics:
     primary:
       - 'mae'                   # Mean Absolute Error
