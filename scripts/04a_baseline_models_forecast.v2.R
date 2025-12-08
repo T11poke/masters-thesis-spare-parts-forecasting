@@ -90,7 +90,7 @@ cat(strrep("=", 70), "\n\n")
 log_message("Definindo métodos de previsão Família 1 e 2", "INFO")
 
 # ===========================================================================
-# FAMÍLIA 1: MÉTODOS CLÁSSICOS ####
+## FAMÍLIA 1: MÉTODOS CLÁSSICOS ####
 # ===========================================================================
 
 #' Forecast: Naive
@@ -206,7 +206,7 @@ forecast_ma <- function(train_ts, h = 12, k = 36) {
 }
 
 # ===========================================================================
-# FAMÍLIA 2: SUAVIZAÇÃO EXPONENCIAL E SÉRIES TEMPORAIS ####
+## FAMÍLIA 2: SUAVIZAÇÃO EXPONENCIAL E SÉRIES TEMPORAIS ####
 # ===========================================================================
 
 #' Forecast: ARIMA
@@ -451,7 +451,7 @@ cat(strrep("=", 70), "\n\n")
 log_message("Iniciando pipeline de forecasting", "INFO")
 
 # ===========================================================================
-# 2.1. DEFINIÇÃO DOS MÉTODOS ####
+## 2.1. DEFINIÇÃO DOS MÉTODOS ####
 # ===========================================================================
 
 # Lista de métodos baseline a aplicar
@@ -708,7 +708,7 @@ cat("   - Família 1 (Clássicos): Naive, Mean, MA_36\n")
 cat("   - Família 2 (Suavização): ARIMA, ETS, HW_Add, HW_Mult, TSLM\n\n")
 
 # ===========================================================================
-# 2.2. CONFIGURAÇÃO DE MODO DEBUG ####
+## 2.2. CONFIGURAÇÃO DE MODO DEBUG ####
 # ===========================================================================
 
 h <- config$parameters$forecasting$horizon
@@ -740,7 +740,7 @@ if(DEBUG_MODE) {
 forecasts_baseline <- list()
 
 # ===========================================================================
-# 2.3. LOOP SOBRE ORIGENS ####
+## 2.3. LOOP SOBRE ORIGENS ####
 # ===========================================================================
 
 origem_nome <- "origem_1"
@@ -784,7 +784,7 @@ for(origem_nome in names(splits_list)) {
   n_elegiveis_original <- length(materiais_elegiveis)
   
   # ===========================================================================
-  # 2.4. APLICAR MODO DEBUG (SUBSET) ####
+  ## 2.4. APLICAR MODO DEBUG (SUBSET) ####
   # ===========================================================================
   
   if(DEBUG_MODE) {
@@ -873,7 +873,7 @@ for(origem_nome in names(splits_list)) {
   }
   
   # ===========================================================================
-  # 2.5. FUNÇÃO PARA PROCESSAR UM MATERIAL ####
+  ## 2.5. FUNÇÃO PARA PROCESSAR UM MATERIAL ####
   # ===========================================================================
   
   processar_material <- function(cd_mat) {
@@ -921,7 +921,7 @@ for(origem_nome in names(splits_list)) {
   }
   
   # ===========================================================================
-  # 2.6. EXECUÇÃO PARALELA COM PROGRESSO ####
+  ## 2.6. EXECUÇÃO PARALELA COM PROGRESSO ####
   # ===========================================================================
   
   cat("\n🚀 Iniciando forecasting paralelo...\n")
@@ -993,7 +993,7 @@ for(origem_nome in names(splits_list)) {
   tempo_total <- toc()
   
   # ===========================================================================
-  # 2.7. ESTATÍSTICAS DE EXECUÇÃO ####
+  ## 2.7. ESTATÍSTICAS DE EXECUÇÃO ####
   # ===========================================================================
   
   cat("\n📊 Estatísticas de execução:\n")
@@ -1006,7 +1006,7 @@ for(origem_nome in names(splits_list)) {
               (tempo_total$toc - tempo_total$tic) / n_elegiveis))
   
   # ===========================================================================
-  # 2.8. VALIDAÇÃO E CONVERGÊNCIA ####
+  ## 2.8. VALIDAÇÃO E CONVERGÊNCIA ####
   # ===========================================================================
   
   cat("\n🔍 Validando forecasts...\n")
@@ -1042,7 +1042,7 @@ for(origem_nome in names(splits_list)) {
     )
   
   # ===========================================================================
-  # 2.9. CHECKPOINT ####
+  ## 2.9. CHECKPOINT ####
   # ===========================================================================
   
   forecasts_baseline[[origem_nome]] <- list(
@@ -1075,4 +1075,122 @@ for(origem_nome in names(splits_list)) {
 }  # FIM DO LOOP SOBRE ORIGENS
 
 log_message("Pipeline de forecasting baseline concluído", "INFO")
+
+# ===========================================================================
+# BLOCO 3: Consolidação e Análise Global ####
+# ===========================================================================
+
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("BLOCO 3: CONSOLIDAÇÃO E ANÁLISE GLOBAL\n")
+cat(strrep("=", 70), "\n\n")
+
+log_message("Consolidando resultados de todas as origens", "INFO")
+
+# ===========================================================================
+## ESTATÍSTICAS GLOBAIS ####
+# ===========================================================================
+
+# Consolidar taxas de convergência
+convergence_global <- map_dfr(names(forecasts_baseline), function(origem_nome) {
+  forecasts_baseline[[origem_nome]]$convergence_summary %>%
+    mutate(origem = origem_nome)
+})
+
+# Calcular médias por método
+convergence_media <- convergence_global %>%
+  group_by(metodo) %>%
+  summarise(
+    taxa_sucesso_media = mean(taxa_sucesso),
+    taxa_sucesso_sd = sd(taxa_sucesso),
+    taxa_sucesso_min = min(taxa_sucesso),
+    taxa_sucesso_max = max(taxa_sucesso),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(taxa_sucesso_media))
+
+cat("📊 Taxa de convergência média por método (todas as origens):\n\n")
+print(convergence_media, n = Inf)
+
+# Exportar
+convergence_global %>%
+  write_xlsx(here("output/reports/04a_baseline", "convergence_all_origins.xlsx"))
+
+convergence_media %>%
+  write_xlsx(here("output/reports/04a_baseline", "convergence_summary.xlsx"))
+
+# ===========================================================================
+## IDENTIFICAR MATERIAIS PROBLEMÁTICOS ####
+# ===========================================================================
+
+cat("\n🔍 Identificando materiais com falhas recorrentes...\n")
+
+materiais_problematicos <- map_dfr(names(forecasts_baseline), function(origem_nome) {
+  
+  map_dfr(forecasts_baseline[[origem_nome]]$forecasts, function(mat_forecast) {
+    
+    n_falhas <- sum(!map_lgl(mat_forecast$forecasts, ~.x$convergence))
+    
+    if(n_falhas > 0) {
+      tibble(
+        origem = origem_nome,
+        cd_material = mat_forecast$cd_material,
+        categoria_sbc = mat_forecast$categoria_sbc,
+        n_falhas = n_falhas,
+        n_metodos_testados = length(mat_forecast$forecasts),
+        metodos_falharam = paste(
+          names(mat_forecast$forecasts)[!map_lgl(mat_forecast$forecasts, ~.x$convergence)],
+          collapse = ", "
+        ),
+        adi = mat_forecast$adi,
+        cv2 = mat_forecast$cv2,
+        n_periods = mat_forecast$train_stats$n_periods,
+        prop_zeros = mat_forecast$train_stats$prop_zeros
+      )
+    }
+  })
+})
+
+if(nrow(materiais_problematicos) > 0) {
+  
+  cat(sprintf("⚠️  %s materiais com falhas em pelo menos 1 método\n",
+              format(n_distinct(materiais_problematicos$cd_material), big.mark = ",")))
+  
+  # Top 10 materiais mais problemáticos
+  top_problematicos <- materiais_problematicos %>%
+    arrange(desc(n_falhas)) %>%
+    head(10)
+  
+  cat("\n📋 Top 10 materiais mais problemáticos:\n")
+  print(top_problematicos)
+  
+  # Exportar
+  materiais_problematicos %>%
+    write_xlsx(here("output/reports/04a_baseline", "materiais_problematicos.xlsx"))
+  
+} else {
+  cat("✅ Nenhum material com falhas detectado!\n")
+}
+
+# ===========================================================================
+## SALVAMENTO FINAL ####
+# ===========================================================================
+
+cat("\n💾 Salvando resultados consolidados...\n")
+
+# Salvar estrutura completa
+saveRDS(
+  forecasts_baseline,
+  here("output/forecasts", "baseline", "forecasts_baseline.rds")
+)
+
+cat("   ✅ forecasts_baseline.rds salvo\n")
+
+# Salvar workspace
+save.image(here(config$paths$output$models, "04a_baseline_models_forecast.RData"))
+
+cat("   ✅ Workspace salvo: 04a_baseline_models_forecast.RData\n")
+
+log_message("========================================", "INFO")
+log_message("SCRIPT 04a CONCLUÍDO COM SUCESSO", "INFO")
+log_message("========================================", "INFO")
 
