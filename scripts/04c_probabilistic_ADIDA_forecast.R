@@ -549,7 +549,7 @@ for(origem_nome in names(splits_list)) {
   chunk_size <- if(DEBUG_MODE) {
     config$parameters$forecasting$debug_chunk_size
   } else {
-    config$parameters$forecasting$parallel$chunk_size
+    config$computation$chunk_size
   }
   
   n_chunks <- ceiling(n_elegiveis / chunk_size)
@@ -558,7 +558,7 @@ for(origem_nome in names(splits_list)) {
               format(n_elegiveis, big.mark = ","),
               n_chunks, chunk_size))
   cat(sprintf("   - Workers paralelos: %d\n", 
-              config$parameters$forecasting$parallel$n_cores))
+              config$computation$n_cores))
   cat(sprintf("   - Métodos por material: %d\n\n", length(metodos_prob_adida)))
   
   material_chunks <- split(
@@ -568,7 +568,7 @@ for(origem_nome in names(splits_list)) {
   
   tic("Forecasting paralelo")
   
-  if(config$parameters$forecasting$parallel$enabled) {
+  if(config$computation$parallel) {
     
     forecasts_origem <- with_progress({
       

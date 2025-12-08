@@ -57,9 +57,9 @@ dir.create(here("output/checkpoints"), showWarnings = FALSE, recursive = TRUE)
 # Configurar paralelização
 parallel::detectCores()
 if(config$computation$parallel) {
-  plan(multisession, workers = config$parameters$forecasting$parallel$n_cores)
+  plan(multisession, workers = config$computation$n_cores)
   log_message(sprintf("Paralelização ativada: %d cores", 
-                      config$parameters$forecasting$parallel$n_cores), "INFO")
+                      config$computation$n_cores), "INFO")
 }
 
 # Carregar dados processados
@@ -928,7 +928,7 @@ for(origem_nome in names(splits_list)) {
   chunk_size <- if(DEBUG_MODE) {
     config$parameters$forecasting$debug_chunk_size
   } else {
-    config$parameters$forecasting$parallel$chunk_size
+    config$computation$chunk_size
   }
   
   n_chunks <- ceiling(n_elegiveis / chunk_size)
@@ -937,7 +937,7 @@ for(origem_nome in names(splits_list)) {
               format(n_elegiveis, big.mark = ","),
               n_chunks, chunk_size))
   cat(sprintf("   - Workers paralelos: %d\n", 
-              config$parameters$forecasting$parallel$n_cores))
+              config$computation$n_cores))
   cat(sprintf("   - Métodos por material: %d\n\n", length(metodos_baseline)))
   
   material_chunks <- split(
