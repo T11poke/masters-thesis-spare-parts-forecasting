@@ -35,8 +35,6 @@ library(tictoc)
 library(writexl)
 library(progressr)
 
-Sys.setenv(FORECAST_DEBUG = "FALSE")
-
 source(here("R/utils/load_config.R"))
 source(here("R/functions/forecasting_functions.R"))
 

@@ -11,15 +11,18 @@ cat("\n")
 cat("╔════════════════════════════════════════════════════════════╗\n")
 cat("║           PIPELINE COMPLETO DE FORECASTING                 ║\n")
 cat("║                                                            ║\n")
-cat("║  Este script executa SEQUENCIALMENTE:                     ║\n")
-cat("║  1. 04a - Modelos Baseline                                ║\n")
-cat("║  2. 04b - Modelos Intermitentes                           ║\n")
-cat("║  3. 04c - Modelos Probabilísticos e ADIDA                 ║\n")
+cat("║  Este script executa SEQUENCIALMENTE:                      ║\n")
+cat("║  1. 04a - Modelos Baseline                                 ║\n")
+cat("║  2. 04b - Modelos Intermitentes                            ║\n")
+cat("║  3. 04c - Modelos Probabilísticos e ADIDA                  ║\n")
 cat("╚════════════════════════════════════════════════════════════╝\n")
 cat("\n")
 
+Sys.setenv(FORECAST_DEBUG = "FALSE")
+
 # Verificar modo debug
-DEBUG_MODE <- Sys.getenv("FORECAST_DEBUG", "FALSE") == "TRUE"
+DEBUG_MODE <- Sys.getenv("FORECAST_DEBUG", "FALSE") == "TRUE" ||
+  isTRUE(config$parameters$forecasting$debug_mode)
 
 if(DEBUG_MODE) {
   cat("⚠️  MODO DEBUG ATIVO\n")
@@ -84,7 +87,7 @@ cat(strrep("=", 70), "\n\n")
 tic("04b - Intermittent Models")
 
 tryCatch({
-  source(here("scripts/04b_intermittent_models_forecast.R"), encoding = "UTF-8")
+  source(here("scripts/04b_Intermittent_Demand_Models_Forecast.R"), encoding = "UTF-8")
   tempo_04b <- toc()
   tempos_execucao$intermittent <- tempo_04b$toc - tempo_04b$tic
   
@@ -111,7 +114,7 @@ cat(strrep("=", 70), "\n\n")
 tic("04c - Probabilistic & ADIDA")
 
 tryCatch({
-  source(here("scripts/04c_probabilistic_adida_forecast.R"), encoding = "UTF-8")
+  source(here("scripts/04c_probabilistic_ADIDA_forecast.R"), encoding = "UTF-8")
   tempo_04c <- toc()
   tempos_execucao$probabilistic <- tempo_04c$toc - tempo_04c$tic
   
