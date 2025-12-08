@@ -158,7 +158,7 @@ cat("\n📁 Arquivos gerados:\n")
 cat("   - output/forecasts/baseline/forecasts_baseline.rds\n")
 cat("   - output/forecasts/intermittent/forecasts_intermittent.rds\n")
 cat("   - output/forecasts/probabilistic/forecasts_probabilistic.rds\n")
-cat("   - output/checkpoints/*.rds (12 arquivos - 3 scripts x 4 origens)\n")
+cat("   - output/checkpoints/*.rds (12 arquivos - 3 scripts x n origens)\n")
 cat("   - output/reports/04*/*.xlsx (relatórios de convergência e alphas)\n")
 
 cat("\n✅ Próximo passo: Executar script 05_consolidate_results.R\n")
