@@ -1,16 +1,10 @@
-# 04b - PREVISÃO: MODELOS ESPECIALIZADOS EM DEMANDA INTERMITENTE ####
+# 04c - FORECASTING: MODELOS PROBABILÍSTICOS E ADIDA ####
 #
 # Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
-# Descrição: Implementação de métodos especializados para demanda intermitente
-#            com otimização de hiperparâmetros (Família 3)
+# Descrição: Implementa métodos probabilísticos (Poisson, Gamma) e
+#            agregação temporal (ADIDA)
 # Data: 2025-12-08
 # Versão: 2.0.0
-
-# Família 3: Métodos Especializados
-#   - Croston Clássico
-#   - SBA (Syntetos-Boylan Approximation)
-#   - TSB (Teunter-Syntetos-Babai)
-#
 
 # Carregar configurações e bibliotecas ####
 library(here)
@@ -20,14 +14,14 @@ library(furrr)
 library(progressr)
 library(tictoc)
 library(writexl)
-library(tsintermittent)
+library(MASS)  # Para fitdistr (Gamma)
 
 source(here("R/utils/load_config.R"))
 
 set.seed(config$parameters$seed)
 
 log_message("========================================", "INFO")
-log_message("INICIANDO FORECASTING - MODELOS INTERMITENTES", "INFO")
+log_message("INICIANDO FORECASTING - PROBABILÍSTICO E ADIDA", "INFO")
 log_message("========================================", "INFO")
 
 # Configurar progresso
@@ -39,8 +33,8 @@ if(interactive()) {
 handlers(global = TRUE)
 
 # Criar diretórios
-dir.create(here("output/forecasts/intermittent"), showWarnings = FALSE, recursive = TRUE)
-dir.create(here("output/reports/04b_intermittent"), showWarnings = FALSE, recursive = TRUE)
+dir.create(here("output/forecasts/probabilistic"), showWarnings = FALSE, recursive = TRUE)
+dir.create(here("output/reports/04c_prob_adida"), showWarnings = FALSE, recursive = TRUE)
 dir.create(here("output/checkpoints"), showWarnings = FALSE, recursive = TRUE)
 
 cat("\n📁 Diretórios de output criados\n")
@@ -63,111 +57,46 @@ cat(sprintf("   - Horizonte de previsão: %d meses\n",
             config$parameters$forecasting$horizon))
 
 # ===========================================================================
-# BLOCO 1: DEFINIÇÃO DOS MÉTODOS INTERMITENTES ####
+# BLOCO 1: DEFINIÇÃO DOS MÉTODOS ####
 # ===========================================================================
 
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat("BLOCO 1: DEFINIÇÃO DOS MÉTODOS\n")
 cat(strrep("=", 70), "\n\n")
 
-log_message("Definindo métodos especializados para demanda intermitente", "INFO")
+log_message("Definindo métodos probabilísticos e ADIDA", "INFO")
 
 # ---------------------------------------------------------------------------
-## 1.1. FUNÇÃO DE OTIMIZAÇÃO DE ALPHA ####
+## 1.1. MÉTODOS PROBABILÍSTICOS ####
 # ---------------------------------------------------------------------------
 
-#' Otimizar parâmetro alpha via validação cruzada temporal
-#'
-#' @param train_ts Série temporal de treino (vetor numérico)
-#' @param alphas_grid Vetor de alphas candidatos
-#' @param cv_horizon Número de períodos para validação
-#' @param method Método Croston ('croston', 'sba', 'tsb')
-#' @return Melhor alpha (escalar numérico)
-otimizar_alpha <- function(train_ts, 
-                           alphas_grid = config$parameters$forecasting$intermittent$alphas_grid,
-                           cv_horizon = config$parameters$forecasting$intermittent$cv_horizon,
-                           method = "croston") {
+metodos_probabilisticos <- list(
   
-  n <- length(train_ts)
-  
-  # Verificar se série é longa o suficiente
-  if(n < (cv_horizon + 12)) {
-    return(0.10)  # Fallback: alpha conservador
-  }
-  
-  # Dividir em treino-validação
-  train_cv <- train_ts[1:(n - cv_horizon)]
-  valid_cv <- train_ts[(n - cv_horizon + 1):n]
-  
-  # Testar cada alpha
-  maes <- map_dbl(alphas_grid, function(alpha_test) {
-    
+  poisson = function(train_ts, h, service_level = 0.80) {
     tryCatch({
       
-      fit <- tsintermittent::crost(
-        train_cv, 
-        h = cv_horizon,
-        w = alpha_test,
-        type = method,
-        init = "mean"
-      )
+      # Estimar lambda (taxa média)
+      lambda <- mean(train_ts, na.rm = TRUE)
       
-      fc <- as.numeric(fit$mean)
-      mae <- mean(abs(valid_cv - fc), na.rm = TRUE)
-      
-      return(mae)
-      
-    }, error = function(e) {
-      return(Inf)  # Penalizar alphas que falham
-    })
-  })
-  
-  # Selecionar melhor alpha
-  best_idx <- which.min(maes)
-  best_alpha <- alphas_grid[best_idx]
-  
-  return(best_alpha)
-}
-
-# ---------------------------------------------------------------------------
-## 1.2. MÉTODOS INTERMITENTES ####
-# ---------------------------------------------------------------------------
-
-metodos_intermitentes <- list(
-  
-  croston = function(train_ts, h, optimize_alpha = TRUE) {
-    tryCatch({
-      
-      # Otimizar alpha se solicitado
-      if(optimize_alpha) {
-        alpha_opt <- otimizar_alpha(train_ts, method = "croston")
-      } else {
-        alpha_opt <- 0.10
+      if(lambda <= 0) {
+        lambda <- 0.01  # Evitar lambda = 0
       }
       
-      # Ajustar modelo
-      fit <- tsintermittent::crost(
-        train_ts,
-        h = h,
-        w = alpha_opt,
-        type = "croston",
-        init = "mean"
-      )
+      # Previsão pontual = lambda
+      # Para nível de serviço, usar quantil
+      fc_point <- rep(qpois(service_level, lambda), h)
       
-      # Extrair previsões
-      fc_point <- as.numeric(fit$mean)
-      fc_point <- pmax(fc_point, 0)  # Truncar negativos
-      
-      # Fitted values
-      fitted_vals <- as.numeric(fit$fitted)
+      # Fitted values = lambda para todos os períodos
+      fitted_vals <- rep(lambda, length(train_ts))
       residuals_vals <- train_ts - fitted_vals
       
       list(
         point = fc_point,
         fitted = fitted_vals,
         residuals = residuals_vals,
-        method = "Croston",
-        alpha = alpha_opt,
+        method = "Poisson",
+        lambda = lambda,
+        service_level = service_level,
         convergence = TRUE,
         error_message = NA_character_
       )
@@ -177,41 +106,48 @@ metodos_intermitentes <- list(
         point = rep(NA_real_, h),
         fitted = rep(NA_real_, length(train_ts)),
         residuals = rep(NA_real_, length(train_ts)),
-        method = "Croston",
-        alpha = NA_real_,
+        method = "Poisson",
+        lambda = NA_real_,
         convergence = FALSE,
         error_message = conditionMessage(e)
       )
     })
   },
   
-  sba = function(train_ts, h, optimize_alpha = TRUE) {
+  gamma = function(train_ts, h, service_level = 0.80) {
     tryCatch({
       
-      if(optimize_alpha) {
-        alpha_opt <- otimizar_alpha(train_ts, method = "sba")
-      } else {
-        alpha_opt <- 0.10
+      # Filtrar apenas valores positivos
+      positive_vals <- train_ts[train_ts > 0]
+      
+      if(length(positive_vals) < 3) {
+        stop("Menos de 3 valores positivos para estimar Gamma")
       }
       
-      fit <- tsintermittent::crost(
-        train_ts,
-        h = h,
-        w = alpha_opt,
-        type = "sba",
-        init = "mean"
-      )
+      # Estimar parâmetros via máxima verossimilhança
+      fit_gamma <- MASS::fitdistr(positive_vals, "gamma")
       
-      fc_point <- pmax(as.numeric(fit$mean), 0)
-      fitted_vals <- as.numeric(fit$fitted)
+      shape <- fit_gamma$estimate["shape"]
+      rate <- fit_gamma$estimate["rate"]
+      
+      # Previsão pontual = média da Gamma = shape/rate
+      # Para nível de serviço, usar quantil
+      fc_value <- qgamma(service_level, shape = shape, rate = rate)
+      fc_point <- rep(fc_value, h)
+      
+      # Fitted values = média da distribuição
+      gamma_mean <- shape / rate
+      fitted_vals <- rep(gamma_mean, length(train_ts))
       residuals_vals <- train_ts - fitted_vals
       
       list(
         point = fc_point,
         fitted = fitted_vals,
         residuals = residuals_vals,
-        method = "SBA",
-        alpha = alpha_opt,
+        method = "Gamma",
+        shape = shape,
+        rate = rate,
+        service_level = service_level,
         convergence = TRUE,
         error_message = NA_character_
       )
@@ -221,52 +157,9 @@ metodos_intermitentes <- list(
         point = rep(NA_real_, h),
         fitted = rep(NA_real_, length(train_ts)),
         residuals = rep(NA_real_, length(train_ts)),
-        method = "SBA",
-        alpha = NA_real_,
-        convergence = FALSE,
-        error_message = conditionMessage(e)
-      )
-    })
-  },
-  
-  tsb = function(train_ts, h, optimize_alpha = TRUE) {
-    tryCatch({
-      
-      if(optimize_alpha) {
-        alpha_opt <- otimizar_alpha(train_ts, method = "tsb")
-      } else {
-        alpha_opt <- 0.10
-      }
-      
-      fit <- tsintermittent::crost(
-        train_ts,
-        h = h,
-        w = alpha_opt,
-        type = "tsb",
-        init = "mean"
-      )
-      
-      fc_point <- pmax(as.numeric(fit$mean), 0)
-      fitted_vals <- as.numeric(fit$fitted)
-      residuals_vals <- train_ts - fitted_vals
-      
-      list(
-        point = fc_point,
-        fitted = fitted_vals,
-        residuals = residuals_vals,
-        method = "TSB",
-        alpha = alpha_opt,
-        convergence = TRUE,
-        error_message = NA_character_
-      )
-      
-    }, error = function(e) {
-      list(
-        point = rep(NA_real_, h),
-        fitted = rep(NA_real_, length(train_ts)),
-        residuals = rep(NA_real_, length(train_ts)),
-        method = "TSB",
-        alpha = NA_real_,
+        method = "Gamma",
+        shape = NA_real_,
+        rate = NA_real_,
         convergence = FALSE,
         error_message = conditionMessage(e)
       )
@@ -274,15 +167,160 @@ metodos_intermitentes <- list(
   }
 )
 
-cat("✅ Métodos intermitentes definidos:\n")
-cat(sprintf("   - Total de métodos: %d\n", length(metodos_intermitentes)))
-cat("   - Métodos: Croston, SBA, TSB\n")
-cat(sprintf("   - Otimização de alpha: %s\n", 
-            ifelse(config$parameters$forecasting$intermittent$optimize_alpha, 
-                   "ATIVADA", "DESATIVADA")))
-cat(sprintf("   - Grid de alphas: [%s]\n", 
-            paste(config$parameters$forecasting$intermittent$alphas_grid, 
-                  collapse = ", ")))
+# ---------------------------------------------------------------------------
+## 1.2. MÉTODOS ADIDA ####
+# ---------------------------------------------------------------------------
+
+metodos_adida <- list(
+  
+  adida_k3_mean = function(train_ts, h) {
+    tryCatch({
+      
+      k <- 3
+      n <- length(train_ts)
+      
+      # Etapa 1: Agregação
+      n_blocks <- floor(n / k)
+      if(n_blocks == 0) {
+        stop("Série muito curta para k=3")
+      }
+      
+      aggregated <- numeric(n_blocks)
+      for(i in 1:n_blocks) {
+        idx_start <- (i - 1) * k + 1
+        idx_end <- i * k
+        aggregated[i] <- sum(train_ts[idx_start:idx_end])
+      }
+      
+      # Etapa 2: Forecast na série agregada (usar média)
+      fc_aggregated <- mean(aggregated, na.rm = TRUE)
+      
+      # Etapa 3: Desagregação
+      n_blocks_fc <- ceiling(h / k)
+      fc_aggregated_vector <- rep(fc_aggregated, n_blocks_fc)
+      
+      # Desagregar igualmente
+      fc_point <- numeric(h)
+      for(i in 1:h) {
+        block_idx <- ceiling(i / k)
+        fc_point[i] <- fc_aggregated_vector[block_idx] / k
+      }
+      
+      # Fitted values (reconstituir da agregação)
+      fitted_vals <- numeric(n)
+      for(i in 1:n_blocks) {
+        idx_start <- (i - 1) * k + 1
+        idx_end <- min(i * k, n)
+        fitted_vals[idx_start:idx_end] <- aggregated[i] / k
+      }
+      
+      # Preencher últimos valores se série não for múltipla de k
+      if(n > n_blocks * k) {
+        fitted_vals[(n_blocks * k + 1):n] <- fc_point[1]
+      }
+      
+      residuals_vals <- train_ts - fitted_vals
+      
+      list(
+        point = fc_point,
+        fitted = fitted_vals,
+        residuals = residuals_vals,
+        method = "ADIDA_k3_mean",
+        k = k,
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+      
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "ADIDA_k3_mean",
+        k = 3,
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  adida_k12_mean = function(train_ts, h) {
+    tryCatch({
+      
+      k <- 12
+      n <- length(train_ts)
+      
+      n_blocks <- floor(n / k)
+      if(n_blocks == 0) {
+        stop("Série muito curta para k=12")
+      }
+      
+      aggregated <- numeric(n_blocks)
+      for(i in 1:n_blocks) {
+        idx_start <- (i - 1) * k + 1
+        idx_end <- i * k
+        aggregated[i] <- sum(train_ts[idx_start:idx_end])
+      }
+      
+      fc_aggregated <- mean(aggregated, na.rm = TRUE)
+      
+      n_blocks_fc <- ceiling(h / k)
+      fc_aggregated_vector <- rep(fc_aggregated, n_blocks_fc)
+      
+      fc_point <- numeric(h)
+      for(i in 1:h) {
+        block_idx <- ceiling(i / k)
+        fc_point[i] <- fc_aggregated_vector[block_idx] / k
+      }
+      
+      fitted_vals <- numeric(n)
+      for(i in 1:n_blocks) {
+        idx_start <- (i - 1) * k + 1
+        idx_end <- min(i * k, n)
+        fitted_vals[idx_start:idx_end] <- aggregated[i] / k
+      }
+      
+      if(n > n_blocks * k) {
+        fitted_vals[(n_blocks * k + 1):n] <- fc_point[1]
+      }
+      
+      residuals_vals <- train_ts - fitted_vals
+      
+      list(
+        point = fc_point,
+        fitted = fitted_vals,
+        residuals = residuals_vals,
+        method = "ADIDA_k12_mean",
+        k = k,
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+      
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "ADIDA_k12_mean",
+        k = 12,
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  }
+)
+
+# Combinar todos os métodos
+metodos_prob_adida <- c(metodos_probabilisticos, metodos_adida)
+
+cat("✅ Métodos definidos:\n")
+cat(sprintf("   - Probabilísticos: %d (Poisson, Gamma)\n", 
+            length(metodos_probabilisticos)))
+cat(sprintf("   - ADIDA: %d (k=3 e k=12 com média)\n", 
+            length(metodos_adida)))
+cat(sprintf("   - Total: %d métodos\n", length(metodos_prob_adida)))
+cat(sprintf("   - Service level: %.0f%%\n", 
+            config$parameters$forecasting$probabilistic$service_level * 100))
 
 # ===========================================================================
 # BLOCO 2: EXECUÇÃO DE FORECASTS POR ORIGEM ####
@@ -292,10 +330,10 @@ cat("\n", strrep("=", 70), "\n", sep = "")
 cat("BLOCO 2: EXECUÇÃO DE FORECASTS POR ORIGEM\n")
 cat(strrep("=", 70), "\n\n")
 
-log_message("Iniciando pipeline de forecasting intermitente", "INFO")
+log_message("Iniciando pipeline de forecasting", "INFO")
 
 h <- config$parameters$forecasting$horizon
-optimize_alpha <- config$parameters$forecasting$intermittent$optimize_alpha
+service_level <- config$parameters$forecasting$probabilistic$service_level
 
 # Modo debug
 DEBUG_MODE <- Sys.getenv("FORECAST_DEBUG", "FALSE") == "TRUE" ||
@@ -322,11 +360,7 @@ if(DEBUG_MODE) {
   }
 }
 
-# Estrutura para armazenar forecasts
-forecasts_intermittent <- list()
-
-# Lista para consolidar alphas otimizados
-alphas_otimizados_todas_origens <- list()
+forecasts_probabilistic <- list()
 
 # ===========================================================================
 ## 2.1. LOOP SOBRE ORIGENS ####
@@ -357,20 +391,9 @@ for(origem_nome in names(splits_list)) {
   cat(sprintf("   - Materiais únicos: %s\n",
               format(n_distinct(train_data$cd_material), big.mark = ",")))
   
-  # ---------------------------------------------------------------------------
-  ## 2.2. FILTRAR MATERIAIS INTERMITENTES/LUMPY ####
-  # ---------------------------------------------------------------------------
-  
-  cat("\n🎯 Filtrando materiais com demanda intermitente/lumpy...\n")
-  
-  materiais_intermitentes <- sbc_classification %>%
-    filter(categoria_sbc %in% c("Intermittent", "Lumpy")) %>%
-    pull(cd_material)
-  
-  # Aplicar filtro de mínimo de ocorrências
+  # Identificar materiais elegíveis
   materiais_elegiveis <- train_data %>%
     as_tibble() %>%
-    filter(cd_material %in% materiais_intermitentes) %>%
     group_by(cd_material) %>%
     summarise(
       n_nonzero = sum(qt_total > 0),
@@ -381,14 +404,8 @@ for(origem_nome in names(splits_list)) {
   
   n_elegiveis_original <- length(materiais_elegiveis)
   
-  cat(sprintf("   - Materiais Intermittent/Lumpy: %s\n",
-              format(length(materiais_intermitentes), big.mark = ",")))
-  cat(sprintf("   - Após filtro ≥%d ocorrências: %s\n",
-              config$parameters$data_cleaning$min_occurrences,
-              format(n_elegiveis_original, big.mark = ",")))
-  
   # ---------------------------------------------------------------------------
-  ## 2.3. APLICAR MODO DEBUG ####
+  ## 2.2. APLICAR MODO DEBUG ####
   # ---------------------------------------------------------------------------
   
   if(DEBUG_MODE) {
@@ -410,7 +427,7 @@ for(origem_nome in names(splits_list)) {
       materiais_elegiveis <- sample(materiais_elegiveis, size = n_debug)
       
     } else {
-      cat("   Estratégia: Amostragem estratificada (Intermittent vs Lumpy)\n")
+      cat("   Estratégia: Amostragem estratificada por categoria SBC\n")
       
       categorias_disponiveis <- sbc_elegiveis %>%
         count(categoria_sbc, name = "n_disp")
@@ -423,7 +440,6 @@ for(origem_nome in names(splits_list)) {
       
       set.seed(config$parameters$seed)
       
-      # Amostragem estratificada manual
       materiais_debug <- character(0)
       
       for(cat_atual in categorias_disponiveis$categoria_sbc) {
@@ -443,7 +459,6 @@ for(origem_nome in names(splits_list)) {
       
       materiais_elegiveis <- materiais_debug
       
-      # Relatório
       cat("   📊 Distribuição da amostra selecionada:\n\n")
       
       distribuicao_debug <- sbc_elegiveis %>%
@@ -476,12 +491,11 @@ for(origem_nome in names(splits_list)) {
   }
   
   # ---------------------------------------------------------------------------
-  ## 2.4. FUNÇÃO PARA PROCESSAR UM MATERIAL ####
+  ## 2.3. FUNÇÃO PARA PROCESSAR UM MATERIAL ####
   # ---------------------------------------------------------------------------
   
   processar_material <- function(cd_mat) {
     
-    # Extrair série temporal de treino
     serie_train <- train_data %>%
       filter(cd_material == cd_mat) %>%
       arrange(data_competencia) %>%
@@ -489,20 +503,24 @@ for(origem_nome in names(splits_list)) {
     
     train_ts <- ts(serie_train, frequency = 12)
     
-    # Obter classificação SBC
     sbc_info <- sbc_classification %>%
       filter(cd_material == cd_mat)
     
-    # Aplicar todos os métodos
-    forecasts_material <- map(metodos_intermitentes, function(metodo_func) {
+    forecasts_material <- map(metodos_prob_adida, function(metodo_func) {
       tic()
-      resultado <- metodo_func(train_ts, h = h, optimize_alpha = optimize_alpha)
+      
+      # Passar service_level se for método probabilístico
+      if(grepl("poisson|gamma", metodo_func %>% deparse() %>% paste(collapse = ""))) {
+        resultado <- metodo_func(train_ts, h = h, service_level = service_level)
+      } else {
+        resultado <- metodo_func(train_ts, h = h)
+      }
+      
       tempo <- toc(quiet = TRUE)
       resultado$execution_time <- tempo$toc - tempo$tic
       return(resultado)
     })
     
-    # Consolidar resultado
     list(
       cd_material = cd_mat,
       origem_id = origem_id,
@@ -523,7 +541,7 @@ for(origem_nome in names(splits_list)) {
   }
   
   # ---------------------------------------------------------------------------
-  ## 2.5. EXECUÇÃO PARALELA COM PROGRESSO ####
+  ## 2.4. EXECUÇÃO PARALELA COM PROGRESSO ####
   # ---------------------------------------------------------------------------
   
   cat("\n🚀 Iniciando forecasting paralelo...\n")
@@ -541,7 +559,7 @@ for(origem_nome in names(splits_list)) {
               n_chunks, chunk_size))
   cat(sprintf("   - Workers paralelos: %d\n", 
               config$parameters$forecasting$parallel$n_cores))
-  cat(sprintf("   - Métodos por material: %d\n\n", length(metodos_intermitentes)))
+  cat(sprintf("   - Métodos por material: %d\n\n", length(metodos_prob_adida)))
   
   material_chunks <- split(
     materiais_elegiveis,
@@ -595,60 +613,7 @@ for(origem_nome in names(splits_list)) {
   tempo_total <- toc()
   
   # ---------------------------------------------------------------------------
-  ## 2.6. EXTRAIR E SALVAR ALPHAS OTIMIZADOS ####
-  # ---------------------------------------------------------------------------
-  
-  if(optimize_alpha) {
-    
-    cat("\n📊 Extraindo alphas otimizados...\n")
-    
-    alphas_otimizados <- map_dfr(forecasts_origem, function(mat_forecast) {
-      map_dfr(names(mat_forecast$forecasts), function(metodo_nome) {
-        tibble(
-          cd_material = mat_forecast$cd_material,
-          origem_id = mat_forecast$origem_id,
-          categoria_sbc = mat_forecast$categoria_sbc,
-          adi = mat_forecast$adi,
-          cv2 = mat_forecast$cv2,
-          metodo = metodo_nome,
-          alpha = mat_forecast$forecasts[[metodo_nome]]$alpha
-        )
-      })
-    })
-    
-    # Salvar para esta origem
-    alphas_otimizados %>%
-      write_xlsx(
-        here("output/reports/04b_intermittent",
-             sprintf("alphas_optimized_%s.xlsx", origem_nome))
-      )
-    
-    cat(sprintf("   ✅ Alphas salvos: alphas_optimized_%s.xlsx\n", origem_nome))
-    
-    # Adicionar à lista consolidada
-    alphas_otimizados_todas_origens[[origem_nome]] <- alphas_otimizados
-    
-    # Estatísticas de alphas
-    cat("\n📈 Estatísticas dos alphas otimizados:\n")
-    
-    alphas_summary <- alphas_otimizados %>%
-      group_by(metodo) %>%
-      summarise(
-        n_materiais = n(),
-        alpha_min = min(alpha, na.rm = TRUE),
-        alpha_q25 = quantile(alpha, 0.25, na.rm = TRUE),
-        alpha_mediana = median(alpha, na.rm = TRUE),
-        alpha_q75 = quantile(alpha, 0.75, na.rm = TRUE),
-        alpha_max = max(alpha, na.rm = TRUE),
-        alpha_media = mean(alpha, na.rm = TRUE),
-        .groups = 'drop'
-      )
-    
-    print(alphas_summary)
-  }
-  
-  # ---------------------------------------------------------------------------
-  ## 2.7. ESTATÍSTICAS DE EXECUÇÃO ####
+  ## 2.5. ESTATÍSTICAS DE EXECUÇÃO ####
   # ---------------------------------------------------------------------------
   
   cat("\n📊 Estatísticas de execução:\n")
@@ -661,7 +626,7 @@ for(origem_nome in names(splits_list)) {
               (tempo_total$toc - tempo_total$tic) / n_elegiveis))
   
   # ---------------------------------------------------------------------------
-  ## 2.8. VALIDAÇÃO E CONVERGÊNCIA ####
+  ## 2.6. VALIDAÇÃO E CONVERGÊNCIA ####
   # ---------------------------------------------------------------------------
   
   cat("\n🔍 Validando forecasts...\n")
@@ -688,40 +653,38 @@ for(origem_nome in names(splits_list)) {
   cat("\n📊 Taxa de convergência por método:\n")
   print(convergence_summary, n = Inf)
   
-  # Salvar resumo
   convergence_summary %>%
     mutate(origem = origem_nome) %>%
     write_xlsx(
-      here("output/reports/04b_intermittent",
+      here("output/reports/04c_prob_adida",
            sprintf("convergence_%s.xlsx", origem_nome))
     )
   
   # ---------------------------------------------------------------------------
-  ## 2.9. CHECKPOINT ####
+  ## 2.7. CHECKPOINT ####
   # ---------------------------------------------------------------------------
   
-  forecasts_intermittent[[origem_nome]] <- list(
+  forecasts_probabilistic[[origem_nome]] <- list(
     metadata = origem_split$metadata,
     forecasts = forecasts_origem,
     convergence_summary = convergence_summary,
-    alphas_otimizados = if(optimize_alpha) alphas_otimizados else NULL,
     execution_stats = list(
       n_materiais = n_elegiveis,
       debug_mode = DEBUG_MODE,
-      optimize_alpha = optimize_alpha,
+      service_level = service_level,
       tempo_total_sec = tempo_total$toc - tempo_total$tic,
       timestamp = Sys.time()
     )
   )
   
   checkpoint_file <- if(DEBUG_MODE) {
-    sprintf("intermittent_%s_DEBUG.rds", origem_nome)
+    sprintf("probabilistic_%s_DEBUG.rds", origem_nome)
   } else {
-    sprintf("intermittent_%s.rds", origem_nome)
+    sprintf("probabilistic_%s.rds", origem_nome)
   }
   
   saveRDS(
-    forecasts_intermittent[[origem_nome]],
+    forecasts_probabilistic[[origem_nome]],
     here("output/checkpoints", checkpoint_file)
   )
   
@@ -741,82 +704,51 @@ cat(strrep("=", 70), "\n\n")
 
 log_message("Consolidando resultados de todas as origens", "INFO")
 
-# Salvar forecasts consolidados
 output_file <- if(DEBUG_MODE) {
-  "forecasts_intermittent_DEBUG.rds"
+  "forecasts_probabilistic_DEBUG.rds"
 } else {
-  "forecasts_intermittent.rds"
+  "forecasts_probabilistic.rds"
 }
 
 saveRDS(
-  forecasts_intermittent,
-  here("output/forecasts/intermittent", output_file)
+  forecasts_probabilistic,
+  here("output/forecasts/probabilistic", output_file)
 )
 
 cat(sprintf("✅ Forecasts salvos: %s\n", output_file))
-
-# Consolidar alphas de todas as origens
-if(optimize_alpha && length(alphas_otimizados_todas_origens) > 0) {
-  
-  alphas_consolidados <- bind_rows(alphas_otimizados_todas_origens, .id = "origem")
-  
-  alphas_consolidados %>%
-    write_xlsx(
-      here("output/reports/04b_intermittent", "alphas_all_origins.xlsx")
-    )
-  
-  cat("✅ Alphas consolidados salvos: alphas_all_origins.xlsx\n")
-  
-  # Estatísticas globais
-  cat("\n📊 Estatísticas globais de alphas:\n")
-  
-  alphas_global_summary <- alphas_consolidados %>%
-    group_by(metodo, categoria_sbc) %>%
-    summarise(
-      n_materiais = n(),
-      alpha_mediana = median(alpha, na.rm = TRUE),
-      alpha_media = mean(alpha, na.rm = TRUE),
-      alpha_sd = sd(alpha, na.rm = TRUE),
-      .groups = 'drop'
-    )
-  
-  print(alphas_global_summary)
-}
 
 # ===========================================================================
 ## RELATÓRIO FINAL ####
 # ===========================================================================
 
 cat("\n", strrep("=", 70), "\n", sep = "")
-cat("🎉 FORECASTING INTERMITENTE CONCLUÍDO! 🎉\n")
+cat("🎉 FORECASTING PROBABILÍSTICO E ADIDA CONCLUÍDO! 🎉\n")
 cat(strrep("=", 70), "\n\n")
 
 cat("📋 RESUMO FINAL:\n\n")
 
-total_materiais <- sum(map_int(forecasts_intermittent, 
+total_materiais <- sum(map_int(forecasts_probabilistic, 
                                ~.x$execution_stats$n_materiais))
 
-cat(sprintf("✅ Origens processadas: %d\n", length(forecasts_intermittent)))
+cat(sprintf("✅ Origens processadas: %d\n", length(forecasts_probabilistic)))
 cat(sprintf("📊 Total de materiais: %s\n", 
             format(total_materiais, big.mark = ",")))
-cat(sprintf("🔧 Otimização de alpha: %s\n", 
-            ifelse(optimize_alpha, "ATIVADA", "DESATIVADA")))
+cat(sprintf("🎲 Service level: %.0f%%\n", service_level * 100))
 
 cat("\n📁 Arquivos gerados:\n")
 cat(sprintf("   - %s\n", output_file))
-cat("   - output/reports/04b_intermittent/alphas_*.xlsx\n")
-cat("   - output/reports/04b_intermittent/convergence_*.xlsx\n")
-cat("   - output/checkpoints/intermittent_*.rds\n")
+cat("   - output/reports/04c_prob_adida/convergence_*.xlsx\n")
+cat("   - output/checkpoints/probabilistic_*.rds\n")
 
 if(DEBUG_MODE) {
   cat("\n")
   cat("╔════════════════════════════════════════════════════════════╗\n")
-  cat("║   ⚠️  ATENÇÃO: Resultados em MODO DEBUG                    ║\n")
+  cat("║   ⚠️  ATENÇÃO: Resultados em MODO DEBUG                   ║\n")
   cat("╚════════════════════════════════════════════════════════════╝\n")
 }
 
 log_message("========================================", "INFO")
-log_message("FORECASTING INTERMITENTE FINALIZADO", "INFO")
+log_message("FORECASTING PROBABILÍSTICO FINALIZADO", "INFO")
 log_message("========================================", "INFO")
 
 cat("\n✅ Script finalizado em:", format(Sys.time()), "\n")

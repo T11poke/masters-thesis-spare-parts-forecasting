@@ -35,7 +35,7 @@ library(tictoc)
 library(writexl)
 library(progressr)
 
-Sys.setenv(FORECAST_DEBUG = "TRUE")
+Sys.setenv(FORECAST_DEBUG = "FALSE")
 
 source(here("R/utils/load_config.R"))
 source(here("R/functions/forecasting_functions.R"))
@@ -57,6 +57,7 @@ dir.create(here("output/reports/04a_baseline"), showWarnings = FALSE, recursive 
 dir.create(here("output/checkpoints"), showWarnings = FALSE, recursive = TRUE)
 
 # Configurar paralelização
+parallel::detectCores()
 if(config$computation$parallel) {
   plan(multisession, workers = config$parameters$forecasting$parallel$n_cores)
   log_message(sprintf("Paralelização ativada: %d cores", 
@@ -743,7 +744,7 @@ forecasts_baseline <- list()
 ## 2.3. LOOP SOBRE ORIGENS ####
 # ===========================================================================
 
-origem_nome <- "origem_1"
+# origem_nome <- "origem_1"
 
 for(origem_nome in names(splits_list)) {
   

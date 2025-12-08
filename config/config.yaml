@@ -44,15 +44,15 @@ parameters:
     horizon: 12
       # === MODO DEBUG === #
     debug_mode: TRUE  # TRUE para ativar modo de teste
-    debug_n_materials: 10  # Materiais por origem em modo debug
-    debug_n_origins: 1  # Número de origens em modo debug
-    debug_chunk_size: 10  # Chunk size reduzido para debug
+    debug_n_materials: 100  # Materiais por origem em modo debug
+    debug_n_origins: 2  # Número de origens em modo debug
+    debug_chunk_size: 20  # Chunk size reduzido para debug
     
     # Configurações de paralelização
     parallel:
       enabled: true
-      n_cores: 8
-      chunk_size: 50
+      n_cores: 10
+      chunk_size: 100
     
      # Família 1: Métodos Clássicos
     moving_average:
@@ -122,7 +122,7 @@ parameters:
 
 computation:
   parallel: true
-  n_cores: 8
+  n_cores: 10
 
 output:
   save_intermediate: true
