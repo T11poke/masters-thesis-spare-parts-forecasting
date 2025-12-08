@@ -450,36 +450,276 @@ cat(strrep("=", 70), "\n\n")
 
 log_message("Iniciando pipeline de forecasting", "INFO")
 
-# Lista de métodos a aplicar
+# ===========================================================================
+# 2.1. DEFINIÇÃO DOS MÉTODOS ####
+# ===========================================================================
+
+# Lista de métodos baseline a aplicar
 metodos_baseline <- list(
-  naive = forecast_naive,
-  mean = forecast_mean,
-  ma_36 = function(ts, h) forecast_ma(ts, h, k = 36),
-  arima = forecast_arima,
-  ets = forecast_ets,
-  hw_add = forecast_hw_add,
-  hw_mult = forecast_hw_mult,
-  tslm = forecast_tslm
+  
+  # --- FAMÍLIA 1: CLÁSSICOS --- #
+  
+  naive = function(train_ts, h) {
+    tryCatch({
+      ultimo_valor <- tail(train_ts[train_ts > 0], 1)
+      if(length(ultimo_valor) == 0) ultimo_valor <- 0
+      
+      list(
+        point = rep(ultimo_valor, h),
+        fitted = rep(ultimo_valor, length(train_ts)),
+        residuals = train_ts - ultimo_valor,
+        method = "Naive",
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "Naive",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  mean = function(train_ts, h) {
+    tryCatch({
+      media <- mean(train_ts, na.rm = TRUE)
+      
+      list(
+        point = rep(media, h),
+        fitted = rep(media, length(train_ts)),
+        residuals = train_ts - media,
+        method = "Mean",
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "Mean",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  ma_36 = function(train_ts, h) {
+    tryCatch({
+      k <- 36
+      n <- length(train_ts)
+      if(n < k) k <- n
+      
+      ma_value <- mean(tail(train_ts, k), na.rm = TRUE)
+      
+      # Fitted values
+      fitted <- rep(NA_real_, n)
+      if(n >= k) {
+        for(i in k:n) {
+          fitted[i] <- mean(train_ts[(i-k+1):i], na.rm = TRUE)
+        }
+      }
+      
+      list(
+        point = rep(ma_value, h),
+        fitted = fitted,
+        residuals = train_ts - fitted,
+        method = "MA_36",
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "MA_36",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  # --- FAMÍLIA 2: SUAVIZAÇÃO EXPONENCIAL --- #
+  
+  arima = function(train_ts, h) {
+    tryCatch({
+      fit <- forecast::auto.arima(
+        train_ts,
+        max.p = 5, max.d = 2, max.q = 5,
+        stepwise = TRUE,
+        approximation = FALSE,
+        trace = FALSE,
+        seasonal = FALSE
+      )
+      
+      fc <- forecast::forecast(fit, h = h)
+      fc_point <- pmax(as.numeric(fc$mean), 0)  # Truncar negativos
+      
+      list(
+        point = fc_point,
+        fitted = as.numeric(fitted(fit)),
+        residuals = as.numeric(residuals(fit)),
+        method = "ARIMA",
+        model_string = paste0("ARIMA(", 
+                              paste(arimaorder(fit), collapse = ","), ")"),
+        aic = fit$aic,
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "ARIMA",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  ets = function(train_ts, h) {
+    tryCatch({
+      fit <- forecast::ets(train_ts, model = "ZZN", damped = NULL)
+      fc <- forecast::forecast(fit, h = h)
+      fc_point <- pmax(as.numeric(fc$mean), 0)
+      
+      list(
+        point = fc_point,
+        fitted = as.numeric(fitted(fit)),
+        residuals = as.numeric(residuals(fit)),
+        method = "ETS",
+        model_string = fit$method,
+        aic = fit$aic,
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "ETS",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  hw_add = function(train_ts, h) {
+    tryCatch({
+      if(length(train_ts) < 24) {
+        stop("Série muito curta para Holt-Winters (< 24 obs)")
+      }
+      
+      fit <- forecast::hw(train_ts, seasonal = "additive", h = h)
+      fc_point <- pmax(as.numeric(fit$mean), 0)
+      
+      list(
+        point = fc_point,
+        fitted = as.numeric(fitted(fit)),
+        residuals = as.numeric(residuals(fit)),
+        method = "HW_Additive",
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "HW_Additive",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  hw_mult = function(train_ts, h) {
+    tryCatch({
+      if(length(train_ts) < 24 || any(train_ts <= 0)) {
+        stop("Incompatível com HW multiplicativo (série curta ou com zeros)")
+      }
+      
+      fit <- forecast::hw(train_ts, seasonal = "multiplicative", h = h)
+      fc_point <- pmax(as.numeric(fit$mean), 0)
+      
+      list(
+        point = fc_point,
+        fitted = as.numeric(fitted(fit)),
+        residuals = as.numeric(residuals(fit)),
+        method = "HW_Multiplicative",
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "HW_Multiplicative",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  },
+  
+  tslm = function(train_ts, h) {
+    tryCatch({
+      time_index <- seq_along(train_ts)
+      fit <- forecast::tslm(train_ts ~ time_index)
+      
+      new_data <- data.frame(
+        time_index = (length(train_ts) + 1):(length(train_ts) + h)
+      )
+      
+      fc <- forecast::forecast(fit, newdata = new_data, h = h)
+      fc_point <- pmax(as.numeric(fc$mean), 0)
+      
+      list(
+        point = fc_point,
+        fitted = as.numeric(fitted(fit)),
+        residuals = as.numeric(residuals(fit)),
+        method = "TSLM",
+        convergence = TRUE,
+        error_message = NA_character_
+      )
+    }, error = function(e) {
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "TSLM",
+        convergence = FALSE,
+        error_message = conditionMessage(e)
+      )
+    })
+  }
 )
 
-# Horizonte de previsão
+cat("✅ Métodos baseline definidos:\n")
+cat(sprintf("   - Total de métodos: %d\n", length(metodos_baseline)))
+cat("   - Família 1 (Clássicos): Naive, Mean, MA_36\n")
+cat("   - Família 2 (Suavização): ARIMA, ETS, HW_Add, HW_Mult, TSLM\n\n")
+
+# ===========================================================================
+# 2.2. CONFIGURAÇÃO DE MODO DEBUG ####
+# ===========================================================================
+
 h <- config$parameters$forecasting$horizon
 
-# Estrutura para armazenar resultados
-forecasts_baseline <- list()
-
-# ===========================================================================
-# MODO DEBUG ####
-# ===========================================================================
-
-# Detectar modo debug via variável de ambiente ou config
 DEBUG_MODE <- Sys.getenv("FORECAST_DEBUG", "FALSE") == "TRUE" ||
   isTRUE(config$parameters$forecasting$debug_mode)
 
 if(DEBUG_MODE) {
   cat("\n")
   cat("╔════════════════════════════════════════════════════════════╗\n")
-  cat("║                   🔧 MODO DEBUG ATIVO 🔧                  ║\n")
+  cat("║                    🔧 MODO DEBUG ATIVO 🔧                   ║\n")
   cat("╚════════════════════════════════════════════════════════════╝\n")
   cat("\n")
   cat("⚠️  Configurações de debug:\n")
@@ -487,10 +727,9 @@ if(DEBUG_MODE) {
               config$parameters$forecasting$debug_n_materials))
   cat(sprintf("   - Usar apenas %d origens\n", 
               config$parameters$forecasting$debug_n_origins))
-  cat(sprintf("   - Chunk size reduzido: %d\n\n", 
+  cat(sprintf("   - Chunk size: %d\n\n", 
               config$parameters$forecasting$debug_chunk_size))
   
-  # Limitar número de origens
   if(length(splits_list) > config$parameters$forecasting$debug_n_origins) {
     splits_list <- splits_list[1:config$parameters$forecasting$debug_n_origins]
     cat(sprintf("✂️  Limitando análise às primeiras %d origens\n\n", 
@@ -498,11 +737,13 @@ if(DEBUG_MODE) {
   }
 }
 
+forecasts_baseline <- list()
+
 # ===========================================================================
-# LOOP SOBRE ORIGENS ####
+# 2.3. LOOP SOBRE ORIGENS ####
 # ===========================================================================
 
-origem_nome = names(splits_list) # COMENTAR PARA RODAR!!!!
+origem_nome <- "origem_1"
 
 for(origem_nome in names(splits_list)) {
   
@@ -515,7 +756,6 @@ for(origem_nome in names(splits_list)) {
   origem_split <- splits_list[[origem_nome]]
   origem_id <- origem_split$metadata$origem_id
   
-  # Extrair dados de treino
   train_data <- origem_split$train
   test_data <- origem_split$test
   sbc_classification <- origem_split$sbc_classification
@@ -530,21 +770,25 @@ for(origem_nome in names(splits_list)) {
   cat(sprintf("   - Materiais únicos: %s\n",
               format(n_distinct(train_data$cd_material), big.mark = ",")))
   
-  # Identificar materiais elegíveis (>= 3 ocorrências de demanda)
+  # Identificar materiais elegíveis
   materiais_elegiveis <- train_data %>%
     as_tibble() %>%
     group_by(cd_material) %>%
     summarise(
       n_nonzero = sum(qt_total > 0),
-      n_periods = n(),
       .groups = 'drop'
     ) %>%
     filter(n_nonzero >= config$parameters$data_cleaning$min_occurrences) %>%
     pull(cd_material)
   
   n_elegiveis_original <- length(materiais_elegiveis)
-  ################################
+  
+  # ===========================================================================
+  # 2.4. APLICAR MODO DEBUG (SUBSET) ####
+  # ===========================================================================
+  
   if(DEBUG_MODE) {
+    
     n_debug <- min(
       config$parameters$forecasting$debug_n_materials,
       n_elegiveis_original
@@ -553,84 +797,74 @@ for(origem_nome in names(splits_list)) {
     cat(sprintf("\n🔧 MODO DEBUG: Selecionando %d materiais de %d disponíveis\n",
                 n_debug, n_elegiveis_original))
     
+    # Obter materiais elegíveis com classificação SBC
     sbc_elegiveis <- sbc_classification %>%
       filter(cd_material %in% materiais_elegiveis)
     
-    # Verificar se há materiais suficientes
-    if(nrow(sbc_elegiveis) < n_debug) {
-      warning(sprintf(
-        "Apenas %d materiais com classificação SBC disponíveis (solicitado: %d)",
-        nrow(sbc_elegiveis), n_debug
-      ))
-      n_debug <- nrow(sbc_elegiveis)
-    }
+  
+    # Amostragem estratificada
+    cat("   Estratégia: Amostragem estratificada por categoria SBC\n")
     
-    # Amostragem estratificada por categoria SBC
+    # Calcular distribuição por categoria
+    categorias_disponiveis <- sbc_elegiveis %>%
+      count(categoria_sbc, name = "n_disp")
     
-    n_categorias <- n_distinct(sbc_elegiveis$categoria_sbc)
-    
-    materiais_debug <- sbc_elegiveis %>%
-      group_by(categoria_sbc) %>%
-      mutate(
-        n_categoria = n(),
-        # Cada categoria contribui proporcionalmente
-        n_amostrar = min(
-          ceiling(n_debug / n_categorias),  # Ideal por categoria
-          n_categoria  # Máximo disponível na categoria
-        )
-      ) %>%
-      slice_sample(n = first(n_amostrar)) %>%
-      ungroup() %>%
-      slice_head(n = n_debug) %>%
-      pull(cd_material)
-    
-    materiais_elegiveis <- materiais_debug
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    categorias <- sbc_elegiveis %>%
-      count(categoria_sbc, name = "n_total")
-    
-    n_categorias <- nrow(categorias)
+    n_categorias <- nrow(categorias_disponiveis)
     n_por_categoria <- ceiling(n_debug / n_categorias)
     
     cat(sprintf("   - Categorias SBC: %d\n", n_categorias))
     cat(sprintf("   - Alvo por categoria: %d materiais\n\n", n_por_categoria))
     
-    # Realizar amostragem
     set.seed(config$parameters$seed)
     
-    materiais_debug <- sbc_classification %>%
-      filter(cd_material %in% materiais_elegiveis) %>%
-      group_by(categoria_sbc) %>%
-      slice_sample(n = ceiling(n_debug / n_distinct(categoria_sbc))) %>%
-      ungroup() %>%
-      slice_head(n = n_debug) %>%
-      pull(cd_material)
+    materiais_debug <- character(0)
+    
+    for(cat_atual in categorias_disponiveis$categoria_sbc) {
+      
+      # Materiais desta categoria
+      mats_categoria <- sbc_elegiveis %>%
+        filter(categoria_sbc == cat_atual) %>%
+        pull(cd_material)
+      
+      # Amostrar
+      n_amostrar <- min(n_por_categoria, length(mats_categoria))
+      mats_selecionados <- sample(mats_categoria, size = n_amostrar)
+      
+      materiais_debug <- c(materiais_debug, mats_selecionados)
+    }
+    
+    # Limitar ao total desejado
+    if(length(materiais_debug) > n_debug) {
+      materiais_debug <- sample(materiais_debug, size = n_debug)
+    }
     
     materiais_elegiveis <- materiais_debug
     
-    cat("\n🔧 DEBUG: Amostra estratificada selecionada:\n")
-    sbc_classification %>%
-      filter(cd_material %in% materiais_elegiveis) %>%
-      count(categoria_sbc) %>%
-      print()
-    cat("\n")
+    #Relatório
+    cat("   📊 Distribuição da amostra selecionada:\n\n")
+    
+    distribuicao_debug <- sbc_elegiveis %>%
+      mutate(selecionado = cd_material %in% materiais_elegiveis) %>%
+      group_by(categoria_sbc) %>%
+      summarise(
+        n_disponiveis = n(),
+        n_selecionados = sum(selecionado),
+        percentual = sprintf("%.1f%%", mean(selecionado) * 100),
+        .groups = 'drop'
+      ) %>%
+      arrange(desc(n_selecionados))
+    
+    print(distribuicao_debug)
+    cat(sprintf("\n   ✓ Total selecionado: %d materiais\n", length(materiais_elegiveis)))
+
+  cat("\n")
   }
   
   n_elegiveis <- length(materiais_elegiveis)
   
-  cat(sprintf("\n✅ Materiais elegíveis: %s (>= %d ocorrências)\n",
-              format(n_elegiveis, big.mark = ","),
-              config$parameters$data_cleaning$min_occurrences))
+  cat(sprintf("\n✅ Materiais a processar: %s",
+              format(n_elegiveis, big.mark = ",")))
+  
   if(DEBUG_MODE) {
     cat(sprintf(" (de %s totais - modo debug)\n",
                 format(n_elegiveis_original, big.mark = ",")))
@@ -638,11 +872,8 @@ for(origem_nome in names(splits_list)) {
     cat("\n")
   }
   
-  # Log de execução
-  log_execucao <- tibble()
-  
   # ===========================================================================
-  ## FUNÇÃO PARA PROCESSAR UM MATERIAL ####
+  # 2.5. FUNÇÃO PARA PROCESSAR UM MATERIAL ####
   # ===========================================================================
   
   processar_material <- function(cd_mat) {
@@ -662,17 +893,14 @@ for(origem_nome in names(splits_list)) {
     
     # Aplicar todos os métodos
     forecasts_material <- map(metodos_baseline, function(metodo_func) {
-      
       tic()
       resultado <- metodo_func(train_ts, h = h)
       tempo <- toc(quiet = TRUE)
-      
       resultado$execution_time <- tempo$toc - tempo$tic
-      
       return(resultado)
     })
     
-    # Consolidar em lista estruturada
+    # Consolidar resultado
     list(
       cd_material = cd_mat,
       origem_id = origem_id,
@@ -693,14 +921,11 @@ for(origem_nome in names(splits_list)) {
   }
   
   # ===========================================================================
-  ## EXECUÇÃO PARALELA ####
+  # 2.6. EXECUÇÃO PARALELA COM PROGRESSO ####
   # ===========================================================================
   
   cat("\n🚀 Iniciando forecasting paralelo...\n")
   
-  tic("Forecasting paralelo")
-  
-  # Definir chunk size (menor em modo debug)
   chunk_size <- if(DEBUG_MODE) {
     config$parameters$forecasting$debug_chunk_size
   } else {
@@ -709,14 +934,12 @@ for(origem_nome in names(splits_list)) {
   
   n_chunks <- ceiling(n_elegiveis / chunk_size)
   
-  cat(sprintf("   - Dividindo %s materiais em %d chunks de ~%d materiais\n",
+  cat(sprintf("   - Dividindo %s materiais em %d chunks de ~%d\n",
               format(n_elegiveis, big.mark = ","),
-              n_chunks,
-              chunk_size))
+              n_chunks, chunk_size))
   cat(sprintf("   - Workers paralelos: %d\n", 
               config$parameters$forecasting$parallel$n_cores))
-  cat(sprintf("   - Métodos por material: %d\n\n", 
-              length(metodos_baseline)))
+  cat(sprintf("   - Métodos por material: %d\n\n", length(metodos_baseline)))
   
   material_chunks <- split(
     materiais_elegiveis,
@@ -727,23 +950,8 @@ for(origem_nome in names(splits_list)) {
   
   if(config$computation$parallel) {
     
-    # Dividir materiais em chunks
-    chunk_size <- config$parameters$forecasting$parallel$chunk_size
-    n_chunks <- ceiling(n_elegiveis / chunk_size)
-    
-    cat(sprintf("   - Dividindo %s materiais em %d chunks de ~%d\n",
-                format(n_elegiveis, big.mark = ","),
-                n_chunks,
-                chunk_size))
-    
-    material_chunks <- split(
-      materiais_elegiveis,
-      ceiling(seq_along(materiais_elegiveis) / chunk_size)
-    )
-    
-    # Processar chunks em paralelo
     forecasts_origem <- with_progress({
-      # Criar progressor
+      
       p <- progressor(
         steps = length(material_chunks),
         message = sprintf("Origem %s", origem_nome)
@@ -752,33 +960,27 @@ for(origem_nome in names(splits_list)) {
       future_map(
         material_chunks,
         function(chunk) {
-          # Processar todos os materiais do chunk
           chunk_result <- map(chunk, processar_material)
-          
-          # Atualizar progresso após chunk completo
-          p(message = sprintf(
-            "✓ Chunk concluído (%d materiais, %d métodos cada)",
-            length(chunk),
-            length(metodos_baseline)
-          ))
+          p(message = sprintf("✓ Chunk (%d materiais)", length(chunk)))
           return(chunk_result)
-          
         },
         .options = furrr_options(
           seed = config$parameters$seed,
           globals = TRUE
-          )
+        )
       )
       
-    }) %>% flatten()  # Achatar lista de listas
-  
-    # modo sequencial:
+    }) %>% flatten()
+    
   } else {
+    
+    cat("   ℹ️  Modo sequencial\n\n")
+    
     pb <- progress::progress_bar$new(
-      format = "  [:bar] :percent | :current/:total materiais | ETA: :eta | Tempo: :elapsed",
+      format = "  [:bar] :percent | :current/:total | ETA: :eta",
       total = n_elegiveis,
       clear = FALSE,
-      width = 80
+      width = 70
     )
     
     forecasts_origem <- map(materiais_elegiveis, function(mat) {
@@ -791,57 +993,25 @@ for(origem_nome in names(splits_list)) {
   tempo_total <- toc()
   
   # ===========================================================================
-  ## ESTATÍSTICAS DE EXECUÇÃO ####
+  # 2.7. ESTATÍSTICAS DE EXECUÇÃO ####
   # ===========================================================================
   
-  cat("\n")
-  cat("📊 Estatísticas de execução:\n")
+  cat("\n📊 Estatísticas de execução:\n")
   cat(sprintf("   - Materiais processados: %s\n",
               format(length(forecasts_origem), big.mark = ",")))
-  cat(sprintf("   - Tempo total: %.1f segundos (%.1f minutos)\n",
+  cat(sprintf("   - Tempo total: %.1f seg (%.1f min)\n",
               tempo_total$toc - tempo_total$tic,
               (tempo_total$toc - tempo_total$tic) / 60))
-  cat(sprintf("   - Tempo médio por material: %.2f segundos\n",
+  cat(sprintf("   - Tempo médio/material: %.2f seg\n",
               (tempo_total$toc - tempo_total$tic) / n_elegiveis))
-  cat(sprintf("   - Taxa de processamento: %.1f materiais/minuto\n",
-              n_elegiveis / ((tempo_total$toc - tempo_total$tic) / 60)))
-  
-  # Calcular tempo médio por método
-  tempo_por_metodo <- map_dfr(forecasts_origem, function(mat_fc) {
-    map_dfr(names(mat_fc$forecasts), function(metodo_nome) {
-      tibble(
-        metodo = metodo_nome,
-        execution_time = mat_fc$forecasts[[metodo_nome]]$execution_time
-      )
-    })
-  }) %>%
-    group_by(metodo) %>%
-    summarise(
-      n = n(),
-      tempo_medio = mean(execution_time, na.rm = TRUE),
-      tempo_total = sum(execution_time, na.rm = TRUE),
-      .groups = 'drop'
-    ) %>%
-    arrange(desc(tempo_total))
-  
-  cat("\n📈 Tempo de execução por método:\n")
-  tempo_por_metodo %>%
-    mutate(
-      tempo_medio_fmt = sprintf("%.3f seg", tempo_medio),
-      tempo_total_fmt = sprintf("%.1f seg", tempo_total)
-    ) %>%
-    select(metodo, tempo_medio_fmt, tempo_total_fmt) %>%
-    print(n = Inf)
   
   # ===========================================================================
-  # VALIDAÇÃO E DIAGNÓSTICO ####
+  # 2.8. VALIDAÇÃO E CONVERGÊNCIA ####
   # ===========================================================================
   
   cat("\n🔍 Validando forecasts...\n")
   
-  # Extrair taxas de convergência por método
   convergence_summary <- map_dfr(forecasts_origem, function(mat_forecast) {
-    
     map_dfr(names(mat_forecast$forecasts), function(metodo_nome) {
       tibble(
         metodo = metodo_nome,
@@ -855,7 +1025,6 @@ for(origem_nome in names(splits_list)) {
       n_total = n(),
       n_converged = sum(convergence),
       n_failed = sum(!convergence),
-      n_with_na = sum(has_na),
       taxa_sucesso = n_converged / n_total * 100,
       .groups = 'drop'
     ) %>%
@@ -864,7 +1033,7 @@ for(origem_nome in names(splits_list)) {
   cat("\n📊 Taxa de convergência por método:\n")
   print(convergence_summary, n = Inf)
   
-  # Salvar resumo de convergência
+  # Salvar resumo
   convergence_summary %>%
     mutate(origem = origem_nome) %>%
     write_xlsx(
@@ -873,7 +1042,7 @@ for(origem_nome in names(splits_list)) {
     )
   
   # ===========================================================================
-  ## CHECKPOINT: SALVAR RESULTADOS DA ORIGEM ####
+  # 2.9. CHECKPOINT ####
   # ===========================================================================
   
   forecasts_baseline[[origem_nome]] <- list(
@@ -882,15 +1051,12 @@ for(origem_nome in names(splits_list)) {
     convergence_summary = convergence_summary,
     execution_stats = list(
       n_materiais = n_elegiveis,
-      n_materiais_original = n_elegiveis_original,
       debug_mode = DEBUG_MODE,
       tempo_total_sec = tempo_total$toc - tempo_total$tic,
-      tempo_por_metodo = tempo_por_metodo,
       timestamp = Sys.time()
     )
   )
   
-  # Salvar checkpoint
   checkpoint_file <- if(DEBUG_MODE) {
     sprintf("baseline_%s_DEBUG.rds", origem_nome)
   } else {
@@ -902,31 +1068,11 @@ for(origem_nome in names(splits_list)) {
     here("output/checkpoints", checkpoint_file)
   )
   
-  cat(sprintf("\n✅ Checkpoint salvo: baseline_%s.rds\n", checkpoint_file))
+  cat(sprintf("\n✅ Checkpoint salvo: %s\n", checkpoint_file))
   
   toc()
   
-  cat("\n", strrep("=", 70), "\n", sep = "")
 }  # FIM DO LOOP SOBRE ORIGENS
 
-log_message("Pipeline de forecasting concluído para todas as origens", "INFO")
-
-# ===========================================================================
-# RESUMO FINAL ####
-# ===========================================================================
-
-if(DEBUG_MODE) {
-  cat("\n")
-  cat("╔════════════════════════════════════════════════════════════╗\n")
-  cat("║            🔧 EXECUÇÃO EM MODO DEBUG 🔧                   ║\n")
-  cat("╚════════════════════════════════════════════════════════════╝\n")
-  cat("\n")
-  cat("⚠️  IMPORTANTE:\n")
-  cat("   - Esta foi uma execução de TESTE com subset reduzido\n")
-  cat("   - Resultados NÃO devem ser usados para análise final\n")
-  cat("   - Para execução completa, defina:\n")
-  cat("       Sys.setenv(FORECAST_DEBUG = 'FALSE')\n")
-  cat("       OU\n")
-  cat("       config$parameters$forecasting$debug_mode = FALSE\n\n")
-}
+log_message("Pipeline de forecasting baseline concluído", "INFO")
 
