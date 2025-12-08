@@ -30,19 +30,7 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📋 TO-DO LIST! 🟡
 
-## 📋 CHECKLIST DE CORREÇÕES
-
-**Prioridade CRÍTICA (fazer agora):**
-
--   Padronizar estrutura `parallel` no config.yaml
-
-**Prioridade ALTA (fazer antes de rodar produção):**
-
--   Implementar checkpoint recovery
-
-**Prioridade MÉDIA (melhorias para próximas versões):**
-
--   Melhorar controle de chunk_size
+-   NIL
 
 ## ▶️Script Pipeline
 
@@ -64,11 +52,19 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 04_run_all_forecasts.R
 
--   04a_baseline_models_forecast.R
+-   Executa sequencialmente os três pipelines de forecasting
 
--   04b_Intermittent_Demand_Models_Forecast.R
+    -   04a_baseline_models_forecast.R
 
--   04c_probabilistic_ADIDA_forecast.R
+        -   Implementação de métodos clássicos e de suavização exponencial \# para previsão de demanda intermitente (Famílias 1 e 2)
+
+    -   04b_Intermittent_Demand_Models_Forecast.R
+
+        -   Implementação de métodos especializados para demanda intermitente \# com otimização de hiperparâmetros (Família 3)
+
+    -   04c_probabilistic_ADIDA_forecast.R
+
+        -   Implementa métodos probabilísticos (Poisson, Gamma) e agregação temporal (ADIDA)
 
 05_consolidate_results.R
 

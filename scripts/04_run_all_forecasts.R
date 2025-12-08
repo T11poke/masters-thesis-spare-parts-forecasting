@@ -184,3 +184,5 @@ saveRDS(
 )
 
 cat("💾 Log de execução salvo: execution_log_04_forecasts.rds\n\n")
+
+plan(sequential)
