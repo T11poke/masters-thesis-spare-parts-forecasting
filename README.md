@@ -30,7 +30,33 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📋 TO-DO LIST! 🟡
 
-1.  
+## 📋 CHECKLIST DE CORREÇÕES
+
+**Prioridade CRÍTICA (fazer agora):**
+
+-    Remover `Sys.setenv(FORECAST_DEBUG = "FALSE")` do script 04
+
+-    Adicionar `source(here("R/utils/load_config.R"))` no script 04
+
+-    Padronizar estrutura `parallel` no config.yaml
+
+**Prioridade ALTA (fazer antes de rodar produção):**
+
+-    Mudar `debug_mode: TRUE` para `FALSE` no config.yaml
+
+-    Adicionar validação de arquivos no script 04
+
+-    Implementar checkpoint recovery
+
+**Prioridade MÉDIA (melhorias para próximas versões):**
+
+-    Documentar thresholds SBC
+
+-    Adicionar logs detalhados no script 01
+
+-    Implementar estimativa de tempo
+
+-    Melhorar controle de chunk_size
 
 ## ▶️Script Pipeline
 
@@ -50,11 +76,13 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 -   Caracterização dos padrões de demanda segundo taxonomia SBC, análise descritiva por categoria, subsistema e temporal
 
-04a_baseline_models_forecast.R
+04_run_all_forecasts.R
 
-04b_intermittent_models_forecast.R
+-   04a_baseline_models_forecast.R
 
-04c_adida_models_forecast.R
+-   04b_Intermittent_Demand_Models_Forecast.R
+
+-   04c_probabilistic_ADIDA_forecast.R
 
 05_consolidate_results.R
 
