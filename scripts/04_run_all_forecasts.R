@@ -7,9 +7,6 @@
 library(here)
 library(tictoc)
 
-source(here("R/utils/load_config.R"))
-config <- load_config()
-
 cat("\n")
 cat("╔════════════════════════════════════════════════════════════╗\n")
 cat("║           PIPELINE COMPLETO DE FORECASTING                 ║\n")
@@ -21,7 +18,7 @@ cat("║  3. 04c - Modelos Probabilísticos e ADIDA                  ║\n")
 cat("╚════════════════════════════════════════════════════════════╝\n")
 cat("\n")
 
-# Sys.setenv(FORECAST_DEBUG = "FALSE")
+Sys.setenv(FORECAST_DEBUG = "FALSE")
 
 # Verificar modo debug
 DEBUG_MODE <- Sys.getenv("FORECAST_DEBUG", "FALSE") == "TRUE" ||

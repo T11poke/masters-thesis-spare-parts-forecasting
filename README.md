@@ -34,15 +34,29 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 **Prioridade CRÍTICA (fazer agora):**
 
--   Padronizar estrutura `parallel` no config.yaml
+-    Remover `Sys.setenv(FORECAST_DEBUG = "FALSE")` do script 04
+
+-    Adicionar `source(here("R/utils/load_config.R"))` no script 04
+
+-    Padronizar estrutura `parallel` no config.yaml
 
 **Prioridade ALTA (fazer antes de rodar produção):**
 
--   Implementar checkpoint recovery
+-    Mudar `debug_mode: TRUE` para `FALSE` no config.yaml
+
+-    Adicionar validação de arquivos no script 04
+
+-    Implementar checkpoint recovery
 
 **Prioridade MÉDIA (melhorias para próximas versões):**
 
--   Melhorar controle de chunk_size
+-    Documentar thresholds SBC
+
+-    Adicionar logs detalhados no script 01
+
+-    Implementar estimativa de tempo
+
+-    Melhorar controle de chunk_size
 
 ## ▶️Script Pipeline
 

@@ -1,13 +1,13 @@
 # =============================================================================
 # ARQUIVO DE CONFIGURAÇÃO - Projeto Previsão de Demanda SISCEAB
 # =============================================================================
-# Versão: 2.2.0
-# Atualizada em 2025-12-08
+# Versão: 2.1.0
+# Atualizada em 2025-11-27
 
 project:
   name: 'Previsão de Demanda SISCEAB'
   author: 'Luiz Antonio Rezende'
-  version: '2.2.0'
+  version: '2.0.0'
   description: 'Análise comparativa de métodos de previsão de demanda intermitente'
 
 paths:
@@ -34,22 +34,14 @@ data:
     consumo: 'Select t_historico_consumo_proj'
     alternados: 'Select t_alternado'
 
-computation:
-  parallel: true
-  n_cores: 10
-  chunk_size: 100  # Produção
-
 parameters:
   seed: 42
-  
   validation:
     n_origins: 6
     test_months: 12
     train_min_months: 36
-  
   forecasting:
     horizon: 12
-    
       # === MODO DEBUG === #
     debug_mode: TRUE  # TRUE para ativar modo de teste
     debug_n_materials: 10  # Materiais por origem em modo debug
@@ -127,6 +119,10 @@ parameters:
     min_occurrences: 3  # Mínimo de ocorrências de demanda não-zero
     outlier_iqr_factor: 3.0  # Fator IQR para detecção de outliers
     discontinuity_months: 36  # Meses sem demanda para considerar descontinuado  
+
+computation:
+  parallel: true
+  n_cores: 10
 
 output:
   save_intermediate: true
