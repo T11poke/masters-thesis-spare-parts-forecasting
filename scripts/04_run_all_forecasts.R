@@ -6,6 +6,9 @@
 
 library(here)
 library(tictoc)
+library(future)
+library(tidyverse)
+
 
 source(here("R/utils/load_config.R"))
 config <- load_config()

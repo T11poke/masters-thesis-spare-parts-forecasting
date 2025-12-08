@@ -29,7 +29,6 @@ library(tsibble)
 library(fable)
 library(feasts)
 library(forecast)  # Para auto.arima, ets, hw
-library(future)
 library(furrr)
 library(tictoc)
 library(writexl)
