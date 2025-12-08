@@ -46,6 +46,14 @@ if(DEBUG_MODE) {
   }
 }
 
+# Configurar paralelização
+parallel::detectCores()
+if(config$computation$parallel) {
+  plan(multisession, workers = config$computation$n_cores)
+  log_message(sprintf("Paralelização ativada: %d cores", 
+                      config$computation$n_cores), "INFO")
+}
+
 cat("\n")
 
 # Timestamp de início
