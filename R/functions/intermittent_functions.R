@@ -14,10 +14,10 @@
 #' temporal. Testa diferentes valores de alpha e seleciona aquele com menor
 #' MAE no conjunto de validação.
 #'
-#' @param train_ts Série temporal de treino (vetor numérico ou objeto ts)
-#' @param alphas_grid Vetor de alphas candidatos para testar
-#' @param cv_horizon Número de períodos reservados para validação
-#' @param method Tipo de método Croston: 'croston', 'sba' ou 'tsb'
+#' @param train_ts Série temporal de treino (vetor numérico)
+#' @param alphas_grid Vetor de alphas candidatos
+#' @param cv_horizon Número de períodos para validação
+#' @param method Método Croston ('croston', 'sba', 'tsb')
 #' 
 #' @return Valor numérico do melhor alpha (escalar entre 0 e 1)
 #' 
@@ -58,7 +58,7 @@ otimizar_alpha <- function(train_ts,
   valid_cv <- train_ts[(n - cv_horizon + 1):n]
   
   # Testar cada alpha
-  maes <- vapply(alphas_grid, function(alpha_test) {
+  maes <- map_dbl(alphas_grid, function(alpha_test) {
     
     tryCatch({
       

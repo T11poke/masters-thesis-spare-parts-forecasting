@@ -76,58 +76,9 @@ log_message("Definindo métodos especializados para demanda intermitente", "INFO
 ## 1.1. FUNÇÃO DE OTIMIZAÇÃO DE ALPHA ####
 # ---------------------------------------------------------------------------
 
-#' Otimizar parâmetro alpha via validação cruzada temporal
-#'
-#' @param train_ts Série temporal de treino (vetor numérico)
-#' @param alphas_grid Vetor de alphas candidatos
-#' @param cv_horizon Número de períodos para validação
-#' @param method Método Croston ('croston', 'sba', 'tsb')
-#' @return Melhor alpha (escalar numérico)
-otimizar_alpha <- function(train_ts, 
-                           alphas_grid = config$parameters$forecasting$intermittent$alphas_grid,
-                           cv_horizon = config$parameters$forecasting$intermittent$cv_horizon,
-                           method = "croston") {
-  
-  n <- length(train_ts)
-  
-  # Verificar se série é longa o suficiente
-  if(n < (cv_horizon + 12)) {
-    return(0.10)  # Fallback: alpha conservador
-  }
-  
-  # Dividir em treino-validação
-  train_cv <- train_ts[1:(n - cv_horizon)]
-  valid_cv <- train_ts[(n - cv_horizon + 1):n]
-  
-  # Testar cada alpha
-  maes <- map_dbl(alphas_grid, function(alpha_test) {
-    
-    tryCatch({
-      
-      fit <- tsintermittent::crost(
-        train_cv, 
-        h = cv_horizon,
-        w = alpha_test,
-        type = method,
-        init = "mean"
-      )
-      
-      fc <- as.numeric(fit$mean)
-      mae <- mean(abs(valid_cv - fc), na.rm = TRUE)
-      
-      return(mae)
-      
-    }, error = function(e) {
-      return(Inf)  # Penalizar alphas que falham
-    })
-  })
-  
-  # Selecionar melhor alpha
-  best_idx <- which.min(maes)
-  best_alpha <- alphas_grid[best_idx]
-  
-  return(best_alpha)
-}
+# Função transferida para intermittent_functions.R
+
+
 
 # ---------------------------------------------------------------------------
 ## 1.2. MÉTODOS INTERMITENTES ####
