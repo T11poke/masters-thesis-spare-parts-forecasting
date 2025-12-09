@@ -325,7 +325,7 @@ metricas_mensais <- map_dfr(names(forecasts_consolidados), function(origem_nome)
     # Classificação SBC do material
     sbc_class <- splits_list[[origem_nome]]$sbc_classification %>%
       filter(cd_material == mat) %>%
-      pull(sbc_category)
+      pull(categoria_sbc)
     
     if(length(sbc_class) == 0) sbc_class <- NA_character_
     
@@ -413,7 +413,7 @@ log_message("Calculando métricas anuais agregadas", "INFO")
 tic("Cálculo de métricas anuais")
 
 metricas_anuais <- metricas_mensais %>%
-  group_by(origem, cd_material, sbc_category, metodo, familia, convergence) %>%
+  group_by(origem, cd_material, categoria_sbc, metodo, familia, convergence) %>%
   summarise(
     # Agregar demanda em 12 meses
     demanda_real_anual = sum(demanda_real_total, na.rm = TRUE),
@@ -501,8 +501,8 @@ resumo_por_metodo %>%
 
 # Resumo por categoria SBC
 resumo_por_sbc <- metricas_mensais %>%
-  filter(!is.na(sbc_category)) %>%
-  group_by(sbc_category, metodo) %>%
+  filter(!is.na(categoria_sbc)) %>%
+  group_by(categoria_sbc, metodo) %>%
   summarise(
     n_previsoes = n(),
     mae_medio = mean(mae_mensal, na.rm = TRUE),
@@ -513,9 +513,9 @@ resumo_por_sbc <- metricas_mensais %>%
 
 cat("\n📊 Desempenho por categoria SBC (amostra):\n")
 resumo_por_sbc %>%
-  group_by(sbc_category) %>%
+  group_by(categoria_sbc) %>%
   slice_min(mae_medio, n = 2) %>%
-  select(sbc_category, metodo, mae_medio) %>%
+  select(categoria_sbc, metodo, mae_medio) %>%
   print()
 
 # ===========================================================================
@@ -566,12 +566,12 @@ cat("✅ Objeto consolidado salvo: forecasts_consolidated.rds\n")
 # Preparar sheets para Excel
 sheets_excel <- list(
   "Metricas_Mensais" = metricas_mensais %>%
-    select(origem, cd_material, sbc_category, metodo, familia,
+    select(origem, cd_material, categoria_sbc, metodo, familia,
            mae_mensal, rmse_mensal, bias_mensal, linlin_mensal,
            mad_mean_ratio, per, convergence),
   
   "Metricas_Anuais" = metricas_anuais %>%
-    select(origem, cd_material, sbc_category, metodo, familia,
+    select(origem, cd_material, categoria_sbc, metodo, familia,
            demanda_real_anual, demanda_prevista_anual,
            erro_absoluto_anual, erro_percentual_anual, 
            tipo_erro_anual, convergence),
@@ -579,7 +579,7 @@ sheets_excel <- list(
   "Resumo_Por_Metodo" = resumo_por_metodo,
   
   "Resumo_Por_SBC" = resumo_por_sbc %>%
-    group_by(sbc_category) %>%
+    group_by(categoria_sbc) %>%
     slice_min(mae_medio, n = 5) %>%
     ungroup()
 )
