@@ -4,7 +4,7 @@
 # Descrição: Consolida forecasts das 3 famílias, calcula métricas de erro
 #            e prepara dados para análise comparativa
 # Data: 2025-12-08
-# Versão: 1.0.0
+# Versão: 1.0.3
 #
 # OBJETIVOS:
 # 1. Consolidar forecasts_baseline + intermittent + probabilistic
@@ -351,7 +351,7 @@ metricas_mensais <- map_dfr(names(forecasts_consolidados), function(origem_nome)
       tibble(
         origem = origem_nome,
         cd_material = mat,
-        sbc_category = sbc_class,
+        categoria_sbc = sbc_class,
         metodo = metodo,
         familia = categorizar_familia_metodo(metodo),
         convergence = fc$convergence,
