@@ -37,6 +37,14 @@ dir.create(here("output/forecasts/probabilistic"), showWarnings = FALSE, recursi
 dir.create(here("output/reports/04c_prob_adida"), showWarnings = FALSE, recursive = TRUE)
 dir.create(here("output/checkpoints"), showWarnings = FALSE, recursive = TRUE)
 
+# Configurar paralelização
+parallel::detectCores()
+if(config$computation$parallel) {
+  plan(multisession, workers = config$computation$n_cores)
+  log_message(sprintf("Paralelização ativada: %d cores", 
+                      config$computation$n_cores), "INFO")
+}
+
 cat("\n📁 Diretórios de output criados\n")
 
 # ===========================================================================
