@@ -68,6 +68,8 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 05_consolidate_results.R
 
+-   Consolida forecasts das 3 famílias, calcula métricas de erro e prepara dados para análise comparativa
+
 06_analyze_results.R
 
 07_advanced_error_visualization.R
