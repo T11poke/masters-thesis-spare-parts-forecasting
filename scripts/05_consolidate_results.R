@@ -163,15 +163,40 @@ with_progress({
     # Extrair test_data
     test_data <- splits_list[[origem_nome]]$test
     
-    # Consolidar forecasts das 3 famílias
-    fc_baseline <- forecasts_baseline[[origem_nome]]$forecasts
-    fc_intermittent <- forecasts_intermittent[[origem_nome]]$forecasts
-    fc_probabilistic <- forecasts_probabilistic[[origem_nome]]$forecasts
+    # =========================================================================
+    # CORREÇÃO CRÍTICA: Acessar estrutura correta dos forecasts
+    # =========================================================================
     
-    # Verificar consistência de materiais
-    materiais_baseline <- names(fc_baseline)
-    materiais_intermittent <- names(fc_intermittent)
-    materiais_probabilistic <- names(fc_probabilistic)
+    # Os forecasts são salvos como lista de objetos, cada um com:
+    # - cd_material
+    # - forecasts (lista de métodos)
+    
+    fc_baseline_list <- forecasts_baseline[[origem_nome]]$forecasts
+    fc_intermittent_list <- forecasts_intermittent[[origem_nome]]$forecasts
+    fc_probabilistic_list <- forecasts_probabilistic[[origem_nome]]$forecasts
+    
+    # Criar índices por cd_material (caso as listas não tenham nomes)
+    
+    # Baseline
+    if(is.null(names(fc_baseline_list))) {
+      materiais_baseline <- map_chr(fc_baseline_list, ~.x$cd_material)
+      names(fc_baseline_list) <- materiais_baseline
+    }
+    materiais_baseline <- names(fc_baseline_list)
+    
+    # Intermittent
+    if(is.null(names(fc_intermittent_list))) {
+      materiais_intermittent <- map_chr(fc_intermittent_list, ~.x$cd_material)
+      names(fc_intermittent_list) <- materiais_intermittent
+    }
+    materiais_intermittent <- names(fc_intermittent_list)
+    
+    # Probabilistic
+    if(is.null(names(fc_probabilistic_list))) {
+      materiais_probabilistic <- map_chr(fc_probabilistic_list, ~.x$cd_material)
+      names(fc_probabilistic_list) <- materiais_probabilistic
+    }
+    materiais_probabilistic <- names(fc_probabilistic_list)
     
     # União de todos os materiais
     todos_materiais <- union(
@@ -191,34 +216,45 @@ with_progress({
       # Validar que temos 12 meses
       if(length(valores_reais) != 12) {
         warning(sprintf("Material %s tem %d meses (esperado: 12)", 
-                       mat, length(valores_reais)))
+                        mat, length(valores_reais)))
       }
       
       # Consolidar todos os métodos
       metodos_consolidados <- list()
       
-      # Baseline
-      if(mat %in% names(fc_baseline)) {
-        metodos_consolidados <- c(
-          metodos_consolidados, 
-          fc_baseline[[mat]]$forecasts
-        )
+      # Baseline - acessar $forecasts dentro do objeto do material
+      if(mat %in% names(fc_baseline_list)) {
+        metodos_baseline <- fc_baseline_list[[mat]]$forecasts
+        # Normalizar nomes dos métodos (lowercase → PascalCase)
+        names(metodos_baseline) <- str_to_title(names(metodos_baseline))
+        # Ajustes específicos
+        names(metodos_baseline) <- str_replace_all(names(metodos_baseline), 
+                                                   c("Ma_36" = "MA", 
+                                                     "Hw_Add" = "HW_Additive",
+                                                     "Hw_Mult" = "HW_Multiplicative",
+                                                     "Tslm" = "TSLM"))
+        metodos_consolidados <- c(metodos_consolidados, metodos_baseline)
       }
       
       # Intermittent
-      if(mat %in% names(fc_intermittent)) {
-        metodos_consolidados <- c(
-          metodos_consolidados,
-          fc_intermittent[[mat]]$forecasts
-        )
+      if(mat %in% names(fc_intermittent_list)) {
+        metodos_intermittent <- fc_intermittent_list[[mat]]$forecasts
+        # Normalizar nomes
+        names(metodos_intermittent) <- str_to_title(names(metodos_intermittent))
+        names(metodos_intermittent) <- str_replace_all(names(metodos_intermittent),
+                                                       c("Sba" = "SBA",
+                                                         "Tsb" = "TSB"))
+        metodos_consolidados <- c(metodos_consolidados, metodos_intermittent)
       }
       
       # Probabilistic
-      if(mat %in% names(fc_probabilistic)) {
-        metodos_consolidados <- c(
-          metodos_consolidados,
-          fc_probabilistic[[mat]]$forecasts
-        )
+      if(mat %in% names(fc_probabilistic_list)) {
+        metodos_probabilistic <- fc_probabilistic_list[[mat]]$forecasts
+        # Normalizar nomes
+        names(metodos_probabilistic) <- str_to_title(names(metodos_probabilistic))
+        names(metodos_probabilistic) <- str_replace_all(names(metodos_probabilistic),
+                                                        c("Adida" = "ADIDA"))
+        metodos_consolidados <- c(metodos_consolidados, metodos_probabilistic)
       }
       
       list(
@@ -248,6 +284,18 @@ cat(sprintf("   - Origens consolidadas: %d\n", length(forecasts_consolidados)))
 cat(sprintf("   - Total de combinações origem-material: %s\n",
             format(sum(map_int(forecasts_consolidados, ~.x$n_materiais)), 
                    big.mark = ",")))
+
+# Verificar se temos materiais
+total_materiais <- sum(map_int(forecasts_consolidados, ~.x$n_materiais))
+
+if(total_materiais == 0) {
+  cat("\n❌ ERRO: Nenhum material consolidado!\n")
+  cat("   Execute diagnostico_estrutura_forecasts.R para investigar.\n")
+  stop("Consolidação falhou: zero materiais processados")
+}
+
+cat(sprintf("   - Métodos únicos consolidados: %d\n",
+            max(map_int(forecasts_consolidados, ~.x$n_metodos))))
 
 # ===========================================================================
 # BLOCO 4: CÁLCULO DE MÉTRICAS DE ERRO (PERSPECTIVA MENSAL) ####
@@ -291,8 +339,8 @@ metricas_mensais <- map_dfr(names(forecasts_consolidados), function(origem_nome)
       
       if(!validacao$valido) {
         warning(sprintf("Validação falhou: %s - %s - %s: %s", 
-                       origem_nome, mat, metodo,
-                       paste(validacao$erros, collapse = "; ")))
+                        origem_nome, mat, metodo,
+                        paste(validacao$erros, collapse = "; ")))
         return(NULL)
       }
       

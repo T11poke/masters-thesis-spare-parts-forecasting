@@ -282,7 +282,7 @@ calculate_annual_error <- function(real, pred) {
     erro_percentual <- NA_real_
   } else {
     erro_percentual <- (demanda_prevista_anual - demanda_real_anual) / 
-                       demanda_real_anual * 100
+      demanda_real_anual * 100
   }
   
   list(
@@ -307,20 +307,24 @@ calculate_annual_error <- function(real, pred) {
 #' @export
 categorizar_familia_metodo <- function(metodo_nome) {
   
+  # Normalizar para case-insensitive
+  metodo_upper <- toupper(metodo_nome)
+  
   dplyr::case_when(
-    metodo_nome %in% c("Naive", "Mean", "MA") ~ "Familia_1_Classicos",
+    metodo_upper %in% c("NAIVE", "MEAN", "MA", "MA_36") ~ 
+      "Familia_1_Classicos",
     
-    metodo_nome %in% c("ARIMA", "ETS", "HW_Additive", 
-                       "HW_Multiplicative", "TSLM") ~ 
+    metodo_upper %in% c("ARIMA", "ETS", "HW_ADDITIVE", "HW_ADD",
+                        "HW_MULTIPLICATIVE", "HW_MULT", "TSLM") ~ 
       "Familia_2_Suavizacao",
     
-    metodo_nome %in% c("Croston", "SBA", "TSB") ~ 
+    metodo_upper %in% c("CROSTON", "SBA", "TSB") ~ 
       "Familia_3_Intermitentes",
     
-    stringr::str_detect(metodo_nome, "Poisson|Gamma") ~ 
+    stringr::str_detect(metodo_upper, "POISSON|GAMMA") ~ 
       "Familia_4_Probabilisticos",
     
-    stringr::str_detect(metodo_nome, "ADIDA") ~ 
+    stringr::str_detect(metodo_upper, "ADIDA") ~ 
       "Familia_5_ADIDA",
     
     TRUE ~ "Outros"
