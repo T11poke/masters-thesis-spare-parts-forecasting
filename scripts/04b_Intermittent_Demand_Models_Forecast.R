@@ -23,6 +23,7 @@ library(writexl)
 library(tsintermittent)
 
 source(here("R/utils/load_config.R"))
+source(here("R/functions/intermittent_functions.R"))
 
 set.seed(config$parameters$seed)
 
@@ -42,6 +43,14 @@ handlers(global = TRUE)
 dir.create(here("output/forecasts/intermittent"), showWarnings = FALSE, recursive = TRUE)
 dir.create(here("output/reports/04b_intermittent"), showWarnings = FALSE, recursive = TRUE)
 dir.create(here("output/checkpoints"), showWarnings = FALSE, recursive = TRUE)
+
+# Configurar paralelização
+parallel::detectCores()
+if(config$computation$parallel) {
+  plan(multisession, workers = config$computation$n_cores)
+  log_message(sprintf("Paralelização ativada: %d cores", 
+                      config$computation$n_cores), "INFO")
+}
 
 cat("\n📁 Diretórios de output criados\n")
 
@@ -78,8 +87,6 @@ log_message("Definindo métodos especializados para demanda intermitente", "INFO
 
 # Função transferida para intermittent_functions.R
 
-
-
 # ---------------------------------------------------------------------------
 ## 1.2. MÉTODOS INTERMITENTES ####
 # ---------------------------------------------------------------------------
@@ -91,6 +98,10 @@ metodos_intermitentes <- list(
       
       # Otimizar alpha se solicitado
       if(optimize_alpha) {
+        # Garantir que função está disponível no worker paralelo
+        if(!exists("otimizar_alpha", mode = "function")) {
+          source(here::here("R/functions/intermittent_functions.R"))
+        }
         alpha_opt <- otimizar_alpha(train_ts, method = "croston")
       } else {
         alpha_opt <- 0.10
@@ -140,7 +151,11 @@ metodos_intermitentes <- list(
     tryCatch({
       
       if(optimize_alpha) {
-        alpha_opt <- otimizar_alpha(train_ts, method = "sba")
+        # Garantir que função está disponível no worker paralelo
+        if(!exists("otimizar_alpha", mode = "function")) {
+          source(here::here("R/functions/intermittent_functions.R"))
+        }
+        alpha_opt <- otimizar_alpha(train_ts, method = "croston")
       } else {
         alpha_opt <- 0.10
       }
@@ -184,7 +199,11 @@ metodos_intermitentes <- list(
     tryCatch({
       
       if(optimize_alpha) {
-        alpha_opt <- otimizar_alpha(train_ts, method = "tsb")
+        # Garantir que função está disponível no worker paralelo
+        if(!exists("otimizar_alpha", mode = "function")) {
+          source(here::here("R/functions/intermittent_functions.R"))
+        }
+        alpha_opt <- otimizar_alpha(train_ts, method = "croston")
       } else {
         alpha_opt <- 0.10
       }
@@ -478,6 +497,9 @@ for(origem_nome in names(splits_list)) {
   # ---------------------------------------------------------------------------
   
   cat("\n🚀 Iniciando forecasting paralelo...\n")
+  
+  # Exportar função para workers paralelos
+  plan(multisession, workers = n_cores)
   
   chunk_size <- if(DEBUG_MODE) {
     config$parameters$forecasting$debug_chunk_size
