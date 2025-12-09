@@ -56,7 +56,7 @@ metodos_esperados <- c(
   # Família 1
   "Naive", "Mean", "MA",
   # Família 2
-  "Arima", "Ets", "HW_Additive", "HW_Multiplicative", "Tslm",
+  "Arima", "Ets", "Hw_add", "Hw_mult", "TSLM",
   # Família 3
   "Croston", "SBA", "TSB"
   # Família 4 e 5 variam

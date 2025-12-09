@@ -499,7 +499,7 @@ for(origem_nome in names(splits_list)) {
   cat("\n🚀 Iniciando forecasting paralelo...\n")
   
   # Exportar função para workers paralelos
-  plan(multisession, workers = config$computation$n_cores)
+  # plan(multisession, workers = config$computation$n_cores)
   
   chunk_size <- if(DEBUG_MODE) {
     config$parameters$forecasting$debug_chunk_size
