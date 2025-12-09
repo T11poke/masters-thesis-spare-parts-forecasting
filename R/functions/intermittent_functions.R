@@ -58,7 +58,7 @@ otimizar_alpha <- function(train_ts,
   valid_cv <- train_ts[(n - cv_horizon + 1):n]
   
   # Testar cada alpha
-  maes <- map_dbl(alphas_grid, function(alpha_test) {
+  maes <- purrr::map_dbl(alphas_grid, function(alpha_test) {
     
     tryCatch({
       
@@ -84,7 +84,7 @@ otimizar_alpha <- function(train_ts,
       # Se alpha falhar, penalizar com Inf
       return(Inf)
     })
-  }, FUN.VALUE = numeric(1))
+  })
   
   # Selecionar melhor alpha (menor MAE)
   if(all(is.infinite(maes))) {

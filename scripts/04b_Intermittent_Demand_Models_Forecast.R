@@ -155,7 +155,7 @@ metodos_intermitentes <- list(
         if(!exists("otimizar_alpha", mode = "function")) {
           source(here::here("R/functions/intermittent_functions.R"))
         }
-        alpha_opt <- otimizar_alpha(train_ts, method = "croston")
+        alpha_opt <- otimizar_alpha(train_ts, method = "sba")
       } else {
         alpha_opt <- 0.10
       }
@@ -203,7 +203,7 @@ metodos_intermitentes <- list(
         if(!exists("otimizar_alpha", mode = "function")) {
           source(here::here("R/functions/intermittent_functions.R"))
         }
-        alpha_opt <- otimizar_alpha(train_ts, method = "croston")
+        alpha_opt <- otimizar_alpha(train_ts, method = "tsb")
       } else {
         alpha_opt <- 0.10
       }
@@ -499,7 +499,7 @@ for(origem_nome in names(splits_list)) {
   cat("\n🚀 Iniciando forecasting paralelo...\n")
   
   # Exportar função para workers paralelos
-  plan(multisession, workers = n_cores)
+  plan(multisession, workers = config$computation$n_cores)
   
   chunk_size <- if(DEBUG_MODE) {
     config$parameters$forecasting$debug_chunk_size
