@@ -315,7 +315,7 @@ metodos_adida <- list(
         error_message = conditionMessage(e)
       )
     })
-  }
+  },
   
   adida_k12_poisson = function(train_ts, h, service_level = 0.80) {
     tryCatch({
@@ -439,7 +439,7 @@ metodos_prob_adida <- c(metodos_probabilisticos, metodos_adida)
 cat("✅ Métodos definidos:\n")
 cat(sprintf("   - Probabilísticos: %d (Poisson, Gamma)\n", 
             length(metodos_probabilisticos)))
-cat(sprintf("   - ADIDA: %d (k=3 e k=12 com média)\n", 
+cat(sprintf("   - ADIDA: %d (k=3 mean, k=12 mean, k=12 poisson)\n", 
             length(metodos_adida)))
 cat(sprintf("   - Total: %d métodos\n", length(metodos_prob_adida)))
 cat(sprintf("   - Service level: %.0f%%\n", 
