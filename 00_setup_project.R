@@ -4,7 +4,7 @@
 # Descrição: Script para inicializar a estrutura completa do projeto
 # Autor: Luiz Antonio Rezende
 # Data: 2025-11-27
-# Versão: 2.0.0
+# Versão: 2.1.1
 # =============================================================================
 
 # Limpar ambiente
@@ -345,16 +345,17 @@ project_packages <- c(
   
   # Séries Temporais e Previsão:
   "forecast", "tsintermittent", "smooth", "fable", "fabletools", "tsibble",
+  "tsutils",
   
   # Análise de Redes e Grafos:
   "igraph",
   
   # Visualização:
   "ggplot2", "patchwork", "ggrepel", "ggthemes", "ggsci", "viridis", "scales", 
-  "corrplot", "treemapify", "plotly", "ggridges",
+  "corrplot", "treemapify", "plotly", "ggridges", "ggpubr",
   
   # Tabelas e Relatórios:
-  "kableExtra", "DT",
+  "kableExtra", "DT", "GT",
   
   # Computação Paralela e Monitoramento:
   "future", "furrr", "progressr", "tictoc",
