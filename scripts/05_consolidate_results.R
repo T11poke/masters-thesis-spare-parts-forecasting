@@ -163,10 +163,8 @@ with_progress({
     # Extrair test_data
     test_data <- splits_list[[origem_nome]]$test
     
-    # =========================================================================
     # CORREÇÃO CRÍTICA: Acessar estrutura correta dos forecasts
-    # =========================================================================
-    
+
     # Os forecasts são salvos como lista de objetos, cada um com:
     # - cd_material
     # - forecasts (lista de métodos)
@@ -517,6 +515,380 @@ resumo_por_sbc %>%
   slice_min(mae_medio, n = 2) %>%
   select(categoria_sbc, metodo, mae_medio) %>%
   print()
+# ===========================================================================
+# BLOCO 6.5: ANÁLISE ESTRATIFICADA - FAMÍLIA 3 (ROBUSTEZ CROSS-CATEGORY) ####
+# ===========================================================================
+
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("BLOCO 6.5: ANÁLISE DE ROBUSTEZ - FAMÍLIA 3 CROSS-CATEGORY\n")
+cat(strrep("=", 70), "\n\n")
+
+log_message("Analisando robustez dos métodos intermitentes em todas as categorias SBC", "INFO")
+
+cat("📊 OBJETIVO: Avaliar performance da Família 3 (Croston, SBA, TSB) quando\n")
+cat("   aplicada fora de seu domínio recomendado (Intermittent/Lumpy)\n\n")
+
+
+## 6.5.1. Performance por Categoria SBC ####
+
+
+analise_robustez_f3 <- metricas_mensais %>%
+  filter(familia == "Familia_3_Intermitentes") %>%
+  filter(!is.na(categoria_sbc)) %>%
+  group_by(metodo, categoria_sbc) %>%
+  summarise(
+    n_materiais = n(),
+    n_convergido = sum(convergence),
+    taxa_convergencia = (n_convergido / n_materiais) * 100,
+    
+    # Métricas de erro
+    mae_mediano = median(mae_mensal, na.rm = TRUE),
+    mae_medio = mean(mae_mensal, na.rm = TRUE),
+    mae_q25 = quantile(mae_mensal, 0.25, na.rm = TRUE),
+    mae_q75 = quantile(mae_mensal, 0.75, na.rm = TRUE),
+    
+    rmse_mediano = median(rmse_mensal, na.rm = TRUE),
+    rmse_medio = mean(rmse_mensal, na.rm = TRUE),
+    
+    bias_mediano = median(bias_mensal, na.rm = TRUE),
+    bias_medio = mean(bias_mensal, na.rm = TRUE),
+    
+    linlin_mediano = median(linlin_mensal, na.rm = TRUE),
+    linlin_medio = mean(linlin_mensal, na.rm = TRUE),
+    
+    .groups = 'drop'
+  ) %>%
+  arrange(metodo, categoria_sbc)
+
+cat("\n📈 Performance da Família 3 por categoria SBC:\n\n")
+print(analise_robustez_f3, n = Inf)
+
+
+## 6.5.2. Degradação Relativa de Performance ####
+
+
+cat("\n📉 Calculando degradação relativa fora do domínio nativo...\n\n")
+
+degradacao_f3 <- analise_robustez_f3 %>%
+  group_by(metodo) %>%
+  mutate(
+    # Identificar domínio nativo (Intermittent + Lumpy)
+    dominio_nativo = categoria_sbc %in% c("Intermittent", "Lumpy"),
+    
+    # MAE baseline (média no domínio nativo)
+    mae_baseline = mean(mae_mediano[dominio_nativo], na.rm = TRUE),
+    
+    # Degradação percentual
+    degradacao_mae_pct = ((mae_mediano / mae_baseline) - 1) * 100,
+    
+    # Classificação de performance
+    classificacao = case_when(
+      dominio_nativo ~ "Domínio Nativo",
+      degradacao_mae_pct < 20 ~ "Degradação Aceitável (<20%)",
+      degradacao_mae_pct < 50 ~ "Degradação Moderada (20-50%)",
+      TRUE ~ "Degradação Severa (>50%)"
+    )
+  ) %>%
+  select(
+    metodo, categoria_sbc, 
+    dominio_nativo, classificacao,
+    n_materiais, taxa_convergencia,
+    mae_mediano, mae_baseline, degradacao_mae_pct
+  ) %>%
+  arrange(metodo, degradacao_mae_pct)
+
+cat("📊 Degradação de performance por categoria:\n\n")
+print(degradacao_f3, n = Inf)
+
+
+## 6.5.3. Comparação com Benchmarks Simples ####
+
+
+cat("\n🎯 Comparando Família 3 vs. Benchmarks simples por categoria...\n\n")
+
+# Extrair performance dos benchmarks (Naive e Mean)
+benchmarks_por_categoria <- metricas_mensais %>%
+  filter(metodo %in% c("Naive", "Mean")) %>%
+  filter(!is.na(categoria_sbc)) %>%
+  group_by(categoria_sbc, metodo) %>%
+  summarise(
+    mae_mediano = median(mae_mensal, na.rm = TRUE),
+    .groups = 'drop'
+  ) %>%
+  pivot_wider(
+    names_from = metodo,
+    values_from = mae_mediano,
+    names_prefix = "benchmark_"
+  )
+
+comparacao_f3_benchmarks <- analise_robustez_f3 %>%
+  left_join(benchmarks_por_categoria, by = "categoria_sbc") %>%
+  mutate(
+    # Vantagem sobre Naive
+    vantagem_vs_naive_pct = ((benchmark_Naive / mae_mediano) - 1) * 100,
+    supera_naive = vantagem_vs_naive_pct > 0,
+    
+    # Vantagem sobre Mean
+    vantagem_vs_mean_pct = ((benchmark_Mean / mae_mediano) - 1) * 100,
+    supera_mean = vantagem_vs_mean_pct > 0,
+    
+    # Classificação de competitividade
+    competitividade = case_when(
+      supera_naive & supera_mean ~ "Superior a ambos",
+      supera_naive | supera_mean ~ "Superior a um",
+      TRUE ~ "Inferior a ambos"
+    )
+  ) %>%
+  select(
+    metodo, categoria_sbc,
+    mae_mediano, benchmark_Naive, benchmark_Mean,
+    vantagem_vs_naive_pct, vantagem_vs_mean_pct,
+    competitividade
+  )
+
+cat("📊 Competitividade da Família 3 vs. Benchmarks:\n\n")
+print(comparacao_f3_benchmarks, n = Inf)
+
+# Resumo executivo
+cat("\n📋 RESUMO EXECUTIVO:\n\n")
+
+resumo_competitividade <- comparacao_f3_benchmarks %>%
+  group_by(categoria_sbc) %>%
+  summarise(
+    n_metodos = n(),
+    n_supera_naive = sum(supera_naive),
+    n_supera_mean = sum(supera_mean),
+    prop_supera_naive = mean(supera_naive) * 100,
+    prop_supera_mean = mean(supera_mean) * 100,
+    .groups = 'drop'
+  )
+
+print(resumo_competitividade)
+
+
+## 6.5.4. Visualização: Heatmap de Performance ####
+
+
+cat("\n📊 Gerando visualizações...\n")
+
+# Preparar dados para heatmap
+dados_heatmap <- analise_robustez_f3 %>%
+  mutate(
+    categoria_sbc = factor(
+      categoria_sbc,
+      levels = c("Smooth", "Erratic", "Intermittent", "Lumpy", "Indefinido")
+    )
+  )
+
+# Heatmap 1: MAE Mediano
+p_heatmap_mae <- ggplot(
+  dados_heatmap,
+  aes(x = metodo, y = categoria_sbc, fill = mae_mediano)
+) +
+  geom_tile(color = "white", size = 1) +
+  geom_text(
+    aes(label = sprintf("%.1f", mae_mediano)),
+    color = "white",
+    fontface = "bold",
+    size = 5
+  ) +
+  scale_fill_gradient2(
+    low = "#2E8B57",      # Verde (bom)
+    mid = "#FF8C00",      # Laranja (médio)
+    high = "#DC143C",     # Vermelho (ruim)
+    midpoint = median(dados_heatmap$mae_mediano, na.rm = TRUE),
+    name = "MAE\nMediano"
+  ) +
+  labs(
+    title = "Robustez da Família 3: Performance Cross-Category",
+    subtitle = "MAE mediano por método e categoria SBC\nCategorias Intermittent/Lumpy = Domínio Nativo",
+    x = "Método",
+    y = "Categoria SBC",
+    caption = "Verde = Melhor performance | Vermelho = Pior performance"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15)),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 13),
+    legend.title = element_text(face = "bold"),
+    panel.grid = element_blank()
+  )
+
+ggsave(
+  here("output/figures/05_robustez_f3_heatmap_mae.png"),
+  plot = p_heatmap_mae,
+  width = 10, height = 6, dpi = 300
+)
+
+# Heatmap 2: Taxa de Convergência
+p_heatmap_conv <- ggplot(
+  dados_heatmap,
+  aes(x = metodo, y = categoria_sbc, fill = taxa_convergencia)
+) +
+  geom_tile(color = "white", size = 1) +
+  geom_text(
+    aes(label = sprintf("%.0f%%", taxa_convergencia)),
+    color = "white",
+    fontface = "bold",
+    size = 5
+  ) +
+  scale_fill_gradient2(
+    low = "#DC143C",      # Vermelho (baixo)
+    mid = "#FF8C00",      # Laranja (médio)
+    high = "#2E8B57",     # Verde (alto)
+    midpoint = 80,
+    name = "Taxa de\nConvergência"
+  ) +
+  labs(
+    title = "Robustez da Família 3: Taxa de Convergência",
+    subtitle = "Porcentagem de materiais com convergência bem-sucedida",
+    x = "Método",
+    y = "Categoria SBC"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15)),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 13),
+    legend.title = element_text(face = "bold"),
+    panel.grid = element_blank()
+  )
+
+ggsave(
+  here("output/figures/05_robustez_f3_heatmap_convergencia.png"),
+  plot = p_heatmap_conv,
+  width = 10, height = 6, dpi = 300
+)
+
+# Gráfico de barras: Degradação por categoria
+dados_barras <- degradacao_f3 %>%
+  filter(!dominio_nativo) %>%  # Apenas categorias fora do domínio
+  mutate(
+    categoria_sbc = factor(
+      categoria_sbc,
+      levels = c("Smooth", "Erratic", "Indefinido")
+    )
+  )
+
+p_degradacao <- ggplot(
+  dados_barras,
+  aes(x = metodo, y = degradacao_mae_pct, fill = categoria_sbc)
+) +
+  geom_col(position = "dodge", color = "black", size = 0.3) +
+  geom_hline(
+    yintercept = c(20, 50),
+    linetype = "dashed",
+    color = "gray30",
+    size = 0.8
+  ) +
+  geom_text(
+    aes(label = sprintf("%.0f%%", degradacao_mae_pct)),
+    position = position_dodge(width = 0.9),
+    vjust = -0.5,
+    size = 3.5
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Smooth" = "#2E8B57",
+      "Erratic" = "#FF6347",
+      "Indefinido" = "#808080"
+    ),
+    name = "Categoria SBC"
+  ) +
+  labs(
+    title = "Degradação de Performance Fora do Domínio Nativo",
+    subtitle = "Aumento percentual do MAE em relação ao baseline (Intermittent + Lumpy)",
+    x = "Método",
+    y = "Degradação do MAE (%)",
+    caption = "Linhas tracejadas: 20% (aceitável) e 50% (severa)"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12, margin = margin(b = 15)),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(face = "bold", size = 13),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold")
+  )
+
+ggsave(
+  here("output/figures/05_robustez_f3_degradacao_barras.png"),
+  plot = p_degradacao,
+  width = 10, height = 7, dpi = 300
+)
+
+cat("✅ Visualizações salvas:\n")
+cat("   - 05_robustez_f3_heatmap_mae.png\n")
+cat("   - 05_robustez_f3_heatmap_convergencia.png\n")
+cat("   - 05_robustez_f3_degradacao_barras.png\n")
+
+
+## 6.5.5. Testes Estatísticos ####
+
+
+cat("\n📊 Realizando testes estatísticos...\n\n")
+
+# Teste: MAE médio dentro vs. fora do domínio
+dados_teste <- metricas_mensais %>%
+  filter(familia == "Familia_3_Intermitentes") %>%
+  filter(!is.na(categoria_sbc)) %>%
+  mutate(
+    dominio_nativo = categoria_sbc %in% c("Intermittent", "Lumpy")
+  )
+
+# Teste t pareado por método
+testes_por_metodo <- dados_teste %>%
+  group_by(metodo) %>%
+  summarise(
+    mae_dentro = mean(mae_mensal[dominio_nativo], na.rm = TRUE),
+    mae_fora = mean(mae_mensal[!dominio_nativo], na.rm = TRUE),
+    diferenca = mae_fora - mae_dentro,
+    diferenca_pct = (diferenca / mae_dentro) * 100,
+    
+    n_dentro = sum(dominio_nativo),
+    n_fora = sum(!dominio_nativo),
+    
+    .groups = 'drop'
+  )
+
+cat("📊 Diferença de MAE: Dentro vs. Fora do Domínio Nativo\n\n")
+print(testes_por_metodo)
+
+
+## 6.5.6. Salvar Resultados ####
+
+
+# Adicionar ao objeto consolidado
+analise_estratificada_f3 <- list(
+  performance_por_categoria = analise_robustez_f3,
+  degradacao_relativa = degradacao_f3,
+  comparacao_benchmarks = comparacao_f3_benchmarks,
+  resumo_competitividade = resumo_competitividade,
+  testes_estatisticos = testes_por_metodo
+)
+
+# Salvar em Excel
+write_xlsx(
+  list(
+    "Performance_por_Categoria" = analise_robustez_f3,
+    "Degradacao_Relativa" = degradacao_f3,
+    "vs_Benchmarks" = comparacao_f3_benchmarks,
+    "Resumo_Competitividade" = resumo_competitividade,
+    "Testes_Estatisticos" = testes_por_metodo
+  ),
+  here("output/reports/05_analise_estratificada_familia3.xlsx")
+)
+
+cat("\n✅ Análise estratificada salva:\n")
+cat("   - output/reports/05_analise_estratificada_familia3.xlsx\n")
+
+cat("\n", strrep("=", 70), "\n\n")
+
+log_message("Análise estratificada da Família 3 concluída", "INFO")
 
 # ===========================================================================
 # BLOCO 7: SALVAR RESULTADOS CONSOLIDADOS ####
@@ -530,9 +902,9 @@ log_message("Salvando resultados consolidados", "INFO")
 
 tic("Salvamento de resultados")
 
-# -----------------------------------------------------------------------------
+
 ## 7.1. Salvar objeto consolidado (RDS) ####
-# -----------------------------------------------------------------------------
+
 
 consolidado_completo <- list(
   forecasts = forecasts_consolidados,
@@ -540,6 +912,7 @@ consolidado_completo <- list(
   metricas_anuais = metricas_anuais,
   resumo_por_metodo = resumo_por_metodo,
   resumo_por_sbc = resumo_por_sbc,
+  analise_estratificada_f3 = analise_estratificada_f3,
   
   # Metadados
   metadata = list(
@@ -559,9 +932,9 @@ saveRDS(
 
 cat("✅ Objeto consolidado salvo: forecasts_consolidated.rds\n")
 
-# -----------------------------------------------------------------------------
+
 ## 7.2. Salvar métricas em Excel ####
-# -----------------------------------------------------------------------------
+
 
 # Preparar sheets para Excel
 sheets_excel <- list(
@@ -591,9 +964,9 @@ write_xlsx(
 
 cat("✅ Métricas em Excel: 05_consolidated_metrics.xlsx\n")
 
-# -----------------------------------------------------------------------------
+
 ## 7.3. Salvar tabelas em CSV (para análise em Python/outros) ####
-# -----------------------------------------------------------------------------
+
 
 write_csv(
   metricas_mensais,
