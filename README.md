@@ -72,6 +72,8 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 06_analyze_results.R
 
+-   Análise estatística comparativa dos métodos de previsão com testes de significância e identificação de domínios de superioridade
+
 07_advanced_error_visualization.R
 
 ## 📊 Estrutura do Projeto
@@ -178,5 +180,5 @@ santosdiaslasdr
 ------------------------------------------------------------------------
 
 **Status**: 🚧 Em desenvolvimento\
-**Última atualização**: 2025-11-27\
-**Versão**: 2.0.1
+**Última atualização**: 2025-12-09\
+**Versão**: 2.1.1
