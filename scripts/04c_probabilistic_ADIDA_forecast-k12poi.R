@@ -316,6 +316,121 @@ metodos_adida <- list(
       )
     })
   }
+  
+  adida_k12_poisson = function(train_ts, h, service_level = 0.80) {
+    tryCatch({
+      
+      # ETAPA 1: AGREGAÇÃO TEMPORAL (k=12) ####
+
+      k <- 12  # Agregação anual
+      n <- length(train_ts)
+      
+      # Verificar se série é longa o suficiente
+      n_blocks <- floor(n / k)
+      if(n_blocks == 0) {
+        stop("Série muito curta para k=12 (menos de 12 observações)")
+      }
+      
+      # Criar blocos anuais não-sobrepostos
+      aggregated <- numeric(n_blocks)
+      for(i in 1:n_blocks) {
+        idx_start <- (i - 1) * k + 1
+        idx_end <- i * k
+        aggregated[i] <- sum(train_ts[idx_start:idx_end])  # SOMA ANUAL
+      }
+      
+      # ETAPA 2: PREVISÃO COM POISSON NA SÉRIE AGREGADA ####
+
+      # Estimar lambda na série AGREGADA (demanda anual média)
+      lambda_annual <- mean(aggregated, na.rm = TRUE)
+      
+      # Proteção: evitar lambda = 0 (mínimo = 0.01)
+      if(lambda_annual <= 0) {
+        lambda_annual <- 0.01
+      }
+      
+      # Previsão agregada usando QUANTIL de Poisson
+      # Incorpora nível de serviço desejado
+      fc_aggregated <- qpois(service_level, lambda_annual)
+      
+      # ETAPA 3: DESAGREGAÇÃO UNIFORME ####
+      
+      # Quantos blocos anuais são necessários para cobrir horizonte h?
+      n_blocks_fc <- ceiling(h / k)
+      
+      # Replicar previsão anual para cada bloco do horizonte
+      fc_aggregated_vector <- rep(fc_aggregated, n_blocks_fc)
+      
+      # Desagregar uniformemente: dividir previsão anual por 12 meses
+      fc_point <- numeric(h)
+      for(i in 1:h) {
+        block_idx <- ceiling(i / k)
+        fc_point[i] <- fc_aggregated_vector[block_idx] / k
+      }
+      
+      # FITTED VALUES E RESIDUALS
+      
+      # Reconstruir fitted values da agregação
+      # (usar a demanda agregada dividida por k para cada mês do bloco)
+      fitted_vals <- numeric(n)
+      for(i in 1:n_blocks) {
+        idx_start <- (i - 1) * k + 1
+        idx_end <- min(i * k, n)
+        fitted_vals[idx_start:idx_end] <- aggregated[i] / k
+      }
+      
+      # Preencher últimos valores se série não for múltipla de k
+      if(n > n_blocks * k) {
+        fitted_vals[(n_blocks * k + 1):n] <- fc_point[1]
+      }
+      
+      # Calcular resíduos
+      residuals_vals <- train_ts - fitted_vals
+      
+      # RETORNO
+
+      list(
+        point = fc_point,
+        fitted = fitted_vals,
+        residuals = residuals_vals,
+        method = "ADIDA_k12_poisson",
+        k = k,
+        lambda = lambda_annual,
+        service_level = service_level,
+        convergence = TRUE,
+        error_message = NA_character_,
+        
+        # Metadados adicionais para análise
+        metadata = list(
+          n_blocks_train = n_blocks,
+          aggregated_values = aggregated,
+          lambda_annual = lambda_annual,
+          fc_aggregated = fc_aggregated
+        )
+      )
+      
+    }, error = function(e) {
+      
+      # Em caso de erro, retornar estrutura com NAs
+      list(
+        point = rep(NA_real_, h),
+        fitted = rep(NA_real_, length(train_ts)),
+        residuals = rep(NA_real_, length(train_ts)),
+        method = "ADIDA_k12_poisson",
+        k = 12,
+        lambda = NA_real_,
+        service_level = service_level,
+        convergence = FALSE,
+        error_message = conditionMessage(e),
+        metadata = list(
+          n_blocks_train = NA_integer_,
+          aggregated_values = NA_real_,
+          lambda_annual = NA_real_,
+          fc_aggregated = NA_real_
+        )
+      )
+    })
+  }
 )
 
 # Combinar todos os métodos
