@@ -954,7 +954,10 @@ sheets_excel <- list(
   "Resumo_Por_SBC" = resumo_por_sbc %>%
     group_by(categoria_sbc) %>%
     slice_min(mae_medio, n = 5) %>%
-    ungroup()
+    ungroup(),
+  
+  "F3_Robustez" = analise_robustez_f3,
+  "F3_Degradacao" = degradacao_f3
 )
 
 write_xlsx(
@@ -1013,11 +1016,6 @@ cat("   - output/reports/05_consolidated_metrics.xlsx\n")
 cat("   - output/tables/metricas_mensais.csv\n")
 cat("   - output/tables/metricas_anuais.csv\n")
 cat("   - output/tables/resumo_por_metodo.csv\n")
-
-cat("\n🎯 PRÓXIMAS ETAPAS:\n")
-cat("   1. Executar script 06_analyze_results.R para análise estatística\n")
-cat("   2. Gerar visualizações comparativas\n")
-cat("   3. Realizar testes de significância estatística\n")
 
 cat("\n", strrep("=", 70), "\n", sep = "")
 
