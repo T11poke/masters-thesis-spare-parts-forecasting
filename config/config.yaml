@@ -51,7 +51,7 @@ parameters:
     horizon: 12
     
       # === MODO DEBUG === #
-    debug_mode: true  # TRUE para ativar modo de teste
+    debug_mode: false  # TRUE para ativar modo de teste
     debug_n_materials: 50  # Materiais por origem em modo debug
     debug_n_origins: 1  # Número de origens em modo debug
     debug_chunk_size: 20  # Chunk size reduzido para debug
