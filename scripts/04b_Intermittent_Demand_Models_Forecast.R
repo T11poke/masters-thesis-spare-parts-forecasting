@@ -117,11 +117,16 @@ metodos_intermitentes <- list(
       )
       
       # Extrair previsões
-      fc_point <- as.numeric(fit$mean)
+      fc_point <- as.numeric(fit$frc.out)
       fc_point <- pmax(fc_point, 0)  # Truncar negativos
       
       # Fitted values
-      fitted_vals <- as.numeric(fit$fitted)
+      fitted_vals <- as.numeric(fit$frc.in)
+      
+      # Expandir para o mesmo comprimento da série original
+      if(length(fitted_vals) < length(train_ts)) {
+        fitted_vals <- c(fitted_vals, rep(NA, length(train_ts) - length(fitted_vals)))
+      }
       residuals_vals <- train_ts - fitted_vals
       
       list(
@@ -168,8 +173,13 @@ metodos_intermitentes <- list(
         init = "mean"
       )
       
-      fc_point <- pmax(as.numeric(fit$mean), 0)
-      fitted_vals <- as.numeric(fit$fitted)
+      fc_point <- pmax(as.numeric(fit$frc.out), 0)
+      fitted_vals <- as.numeric(fit$frc.in)
+      
+      # Expandir para o mesmo comprimento da série original
+      if(length(fitted_vals) < length(train_ts)) {
+        fitted_vals <- c(fitted_vals, rep(NA, length(train_ts) - length(fitted_vals)))
+      }
       residuals_vals <- train_ts - fitted_vals
       
       list(
@@ -216,8 +226,13 @@ metodos_intermitentes <- list(
         init = "mean"
       )
       
-      fc_point <- pmax(as.numeric(fit$mean), 0)
-      fitted_vals <- as.numeric(fit$fitted)
+      fc_point <- pmax(as.numeric(fit$frc.out), 0)
+      fitted_vals <- as.numeric(fit$frc.in)
+      
+      # Expandir para o mesmo comprimento da série original
+      if(length(fitted_vals) < length(train_ts)) {
+        fitted_vals <- c(fitted_vals, rep(NA, length(train_ts) - length(fitted_vals)))
+      }
       residuals_vals <- train_ts - fitted_vals
       
       list(
