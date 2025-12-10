@@ -355,7 +355,7 @@ for(origem_nome in names(splits_list)) {
   # Aplicar filtro de mínimo de ocorrências
   materiais_elegiveis <- train_data %>%
     as_tibble() %>%
-    filter(cd_material %in% materiais_intermitentes) %>%
+    # filter(cd_material %in% materiais_intermitentes) %>%
     group_by(cd_material) %>%
     summarise(
       n_nonzero = sum(qt_total > 0),
@@ -371,6 +371,8 @@ for(origem_nome in names(splits_list)) {
   cat(sprintf("   - Após filtro ≥%d ocorrências: %s\n",
               config$parameters$data_cleaning$min_occurrences,
               format(n_elegiveis_original, big.mark = ",")))
+  cat("   📊 Avaliando métodos intermitentes em todas as categorias SBC\n")
+  cat("      (análise de robustez cross-category)\n")
   
   # ---------------------------------------------------------------------------
   ## 2.3. APLICAR MODO DEBUG ####
