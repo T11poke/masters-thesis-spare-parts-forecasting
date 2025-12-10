@@ -14,10 +14,10 @@
 #' temporal. Testa diferentes valores de alpha e seleciona aquele com menor
 #' MAE no conjunto de validação.
 #'
-#' @param train_ts Série temporal de treino (vetor numérico)
-#' @param alphas_grid Vetor de alphas candidatos
-#' @param cv_horizon Número de períodos para validação
-#' @param method Método Croston ('croston', 'sba', 'tsb')
+#' @param train_ts Série temporal de treino (vetor numérico ou objeto ts)
+#' @param alphas_grid Vetor de alphas candidatos para testar
+#' @param cv_horizon Número de períodos reservados para validação
+#' @param method Tipo de método Croston: 'croston', 'sba' ou 'tsb'
 #' 
 #' @return Valor numérico do melhor alpha (escalar entre 0 e 1)
 #' 
@@ -38,7 +38,8 @@
 otimizar_alpha <- function(train_ts, 
                            alphas_grid = c(0.05, 0.10, 0.15, 0.20, 0.25, 0.30),
                            cv_horizon = 6,
-                           method = "croston") {
+                           method = "croston",
+                           debug = FALSE) {
   
   # Converter para vetor numérico se necessário
   if(inherits(train_ts, "ts")) {
@@ -47,9 +48,32 @@ otimizar_alpha <- function(train_ts,
   
   n <- length(train_ts)
   
+  # Log de debug
+  if(debug) {
+    cat(sprintf("\n[DEBUG] otimizar_alpha:\n"))
+    cat(sprintf("  - Método: %s\n", method))
+    cat(sprintf("  - n = %d períodos\n", n))
+    cat(sprintf("  - Valores não-zero: %d (%.1f%%)\n", 
+                sum(train_ts > 0), mean(train_ts > 0) * 100))
+    cat(sprintf("  - cv_horizon = %d\n", cv_horizon))
+    cat(sprintf("  - Mínimo requerido: %d períodos\n", cv_horizon + 12))
+  }
+  
   # Verificar se série é longa o suficiente para CV
   if(n < (cv_horizon + 12)) {
-    # Série muito curta - retornar alpha conservador
+    if(debug) {
+      cat(sprintf("  → Série muito curta, retornando alpha padrão 0.10\n"))
+    }
+    return(0.10)
+  }
+  
+  # Verificar se série tem valores não-zero suficientes
+  n_nonzero <- sum(train_ts > 0)
+  if(n_nonzero < 3) {
+    if(debug) {
+      cat(sprintf("  → Poucos valores não-zero (%d), retornando alpha padrão 0.10\n", 
+                  n_nonzero))
+    }
     return(0.10)
   }
   
@@ -57,8 +81,16 @@ otimizar_alpha <- function(train_ts,
   train_cv <- train_ts[1:(n - cv_horizon)]
   valid_cv <- train_ts[(n - cv_horizon + 1):n]
   
+  if(debug) {
+    cat(sprintf("  - Treino CV: %d períodos\n", length(train_cv)))
+    cat(sprintf("  - Validação CV: %d períodos\n", length(valid_cv)))
+    cat(sprintf("  - Testando %d alphas: %s\n", 
+                length(alphas_grid), 
+                paste(alphas_grid, collapse = ", ")))
+  }
+  
   # Testar cada alpha
-  maes <- purrr::map_dbl(alphas_grid, function(alpha_test) {
+  maes <- vapply(alphas_grid, function(alpha_test) {
     
     tryCatch({
       
@@ -72,28 +104,48 @@ otimizar_alpha <- function(train_ts,
         outplot = FALSE  # Não gerar gráficos
       )
       
-      # Extrair previsões
-      fc <- as.numeric(fit$mean)
+      # ✅ CORREÇÃO: Usar $frc.out ao invés de $mean
+      fc <- as.numeric(fit$frc.out)
+      
+      # Verificar se previsões são válidas
+      if(all(is.na(fc)) || all(is.infinite(fc)) || length(fc) == 0) {
+        if(debug) cat(sprintf("    ⚠️  Alpha %.2f: previsões inválidas\n", alpha_test))
+        return(Inf)
+      }
       
       # Calcular MAE
       mae <- mean(abs(valid_cv - fc), na.rm = TRUE)
+      
+      if(debug) cat(sprintf("    ✓ Alpha %.2f: MAE = %.3f\n", alpha_test, mae))
       
       return(mae)
       
     }, error = function(e) {
       # Se alpha falhar, penalizar com Inf
+      if(debug) {
+        cat(sprintf("    ✗ Alpha %.2f: ERRO - %s\n", 
+                    alpha_test, conditionMessage(e)))
+      }
       return(Inf)
     })
-  })
+  }, FUN.VALUE = numeric(1))
   
   # Selecionar melhor alpha (menor MAE)
   if(all(is.infinite(maes))) {
     # Todos os alphas falharam - retornar padrão
+    if(debug) {
+      cat(sprintf("  → TODOS os alphas falharam, retornando padrão 0.10\n"))
+    }
     return(0.10)
   }
   
   best_idx <- which.min(maes)
   best_alpha <- alphas_grid[best_idx]
+  best_mae <- maes[best_idx]
+  
+  if(debug) {
+    cat(sprintf("  → Melhor alpha: %.2f (MAE = %.3f)\n", best_alpha, best_mae))
+  }
   
   return(best_alpha)
 }
