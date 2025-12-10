@@ -1016,6 +1016,7 @@ cat("   - output/reports/05_consolidated_metrics.xlsx\n")
 cat("   - output/tables/metricas_mensais.csv\n")
 cat("   - output/tables/metricas_anuais.csv\n")
 cat("   - output/tables/resumo_por_metodo.csv\n")
+#### ATEN"CÃO: INCLUIR OS NOVOS OUTPUTS GERADOS COM O 6.5 #########
 
 cat("\n", strrep("=", 70), "\n", sep = "")
 
