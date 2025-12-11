@@ -21,6 +21,7 @@
 
 library(here)
 library(tidyverse)
+library(magrittr)
 library(ggplot2)
 library(patchwork)
 library(scales)
@@ -177,25 +178,30 @@ p_multi_metrica <- ggplot(top10_multi, aes(x = metrica, y = rank, group = metodo
   geom_line(aes(color = familia), linewidth = 1, alpha = 0.7) +
   geom_point(aes(color = familia), size = 3) +
   geom_text_repel(
-    data = top10_multi %>% filter(metrica == "MAE\n(Mensal)"),
+    data = top10_multi %>% filter(metrica == "RMSE\n(Mensal)"),
     aes(label = metodo, color = familia),
-    nudge_x = -0.3,
+    nudge_x = 0.3,
+    hjust = 0,
+    direction = "y",
     size = 3,
     fontface = "bold",
-    segment.size = 0.3
+    segment.size = NA
   ) +
   scale_color_manual(values = cores_familia) +
   scale_y_reverse(breaks = 1:10) +
   labs(
-    title = "Consistência de Rankings entre Métricas",
-    subtitle = "Top 10 métodos - comparação de posições em diferentes métricas",
+    # title = "Consistência de Rankings entre Métricas",
+    # subtitle = "Top 10 métodos - comparação de posições em diferentes métricas",
     x = NULL,
     y = "Posição no Ranking",
     color = "Família",
-    caption = "Linhas mais horizontais indicam maior consistência entre métricas"
   ) +
   theme_dissertacao() +
-  guides(color = guide_legend(nrow = 2))
+  guides(color = guide_legend(nrow = 2)) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
 
 ggsave(
   here("output/figures/07_results/02_consistencia_rankings.png"),
@@ -209,37 +215,37 @@ cat("   ✅ Gráfico salvo: 02_consistencia_rankings.png\n")
 ## 2.3. Ranking por Família ####
 # ---------------------------------------------------------------------------
 
-cat("\n📊 2.3. Ranking agrupado por família...\n")
-
-ranking_familia <- ranking_consolidado %>%
-  head(20) %>%
-  mutate(metodo = fct_reorder(metodo, mae_medio))
-
-p_ranking_familia <- ggplot(ranking_familia, 
-                            aes(x = mae_medio, y = metodo, fill = familia)) +
-  geom_col(alpha = 0.85) +
-  geom_text(aes(label = sprintf("%.2f", mae_medio)), 
-            hjust = -0.2, size = 3, fontface = "bold") +
-  scale_fill_manual(values = cores_familia) +
-  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
-  labs(
-    title = "Ranking de Métodos por Família Metodológica",
-    subtitle = "Top 20 métodos classificados por MAE médio",
-    x = "MAE Médio",
-    y = NULL,
-    fill = "Família",
-    caption = "Cores representam diferentes famílias metodológicas"
-  ) +
-  theme_dissertacao() +
-  guides(fill = guide_legend(nrow = 2))
-
-ggsave(
-  here("output/figures/07_results/03_ranking_por_familia.png"),
-  plot = p_ranking_familia,
-  width = 11, height = 9, dpi = 300
-)
-
-cat("   ✅ Gráfico salvo: 03_ranking_por_familia.png\n")
+# cat("\n📊 2.3. Ranking agrupado por família...\n")
+# 
+# ranking_familia <- ranking_consolidado %>%
+#   head(10) %>%
+#   mutate(metodo = fct_reorder(metodo, mae_medio))
+# 
+# p_ranking_familia <- ggplot(ranking_familia, 
+#                             aes(x = mae_medio, y = metodo, fill = familia)) +
+#   geom_col(alpha = 0.85) +
+#   geom_text(aes(label = sprintf("%.2f", mae_medio)), 
+#             hjust = -0.2, size = 3, fontface = "bold") +
+#   scale_fill_manual(values = cores_familia) +
+#   scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+#   labs(
+#     title = "Ranking de Métodos por Família Metodológica",
+#     subtitle = "Top 20 métodos classificados por MAE médio",
+#     x = "MAE Médio",
+#     y = NULL,
+#     fill = "Família",
+#     caption = "Cores representam diferentes famílias metodológicas"
+#   ) +
+#   theme_dissertacao() +
+#   guides(fill = guide_legend(nrow = 2))
+# 
+# ggsave(
+#   here("output/figures/07_results/03_ranking_por_familia.png"),
+#   plot = p_ranking_familia,
+#   width = 11, height = 9, dpi = 300
+# )
+# 
+# cat("   ✅ Gráfico salvo: 03_ranking_por_familia.png\n")
 
 # ===========================================================================
 # BLOCO 3: ANÁLISE POR CATEGORIA SBC ####
@@ -255,53 +261,53 @@ log_message("Gerando visualizações por categoria SBC", "INFO")
 ## 3.1. Heatmap de Rankings por Categoria ####
 # ---------------------------------------------------------------------------
 
-cat("📊 3.1. Heatmap de rankings por categoria...\n")
-
-# Top 10 métodos globais
-top10_metodos <- ranking_consolidado %>% head(10) %>% pull(metodo)
-
-# Calcular rankings por categoria
-rankings_sbc <- desempenho_por_sbc %>%
-  filter(metodo %in% top10_metodos) %>%
-  group_by(categoria_sbc) %>%
-  arrange(mae_medio) %>%
-  mutate(rank = row_number()) %>%
-  ungroup() %>%
-  select(categoria_sbc, metodo, rank, mae_medio)
-
-p_heatmap_sbc <- ggplot(rankings_sbc, 
-                        aes(x = categoria_sbc, y = fct_reorder(metodo, rank, .fun = mean), 
-                            fill = rank)) +
-  geom_tile(color = "white", linewidth = 1) +
-  geom_text(aes(label = rank), color = "white", fontface = "bold", size = 5) +
-  scale_fill_gradient2(
-    low = "#00A087FF", 
-    mid = "#F39B7FFF", 
-    high = "#E64B35FF",
-    midpoint = 5.5,
-    breaks = 1:10
-  ) +
-  labs(
-    title = "Rankings de Métodos por Categoria SBC",
-    subtitle = "Posição dos Top 10 métodos globais em cada categoria de demanda",
-    x = "Categoria SBC",
-    y = NULL,
-    fill = "Rank",
-    caption = "Verde = melhor posição; Vermelho = pior posição"
-  ) +
-  theme_dissertacao() +
-  theme(
-    axis.text.x = element_text(angle = 0, hjust = 0.5),
-    panel.grid = element_blank()
-  )
-
-ggsave(
-  here("output/figures/07_results/04_heatmap_rankings_sbc.png"),
-  plot = p_heatmap_sbc,
-  width = 10, height = 8, dpi = 300
-)
-
-cat("   ✅ Gráfico salvo: 04_heatmap_rankings_sbc.png\n")
+# cat("📊 3.1. Heatmap de rankings por categoria...\n")
+# 
+# # Top 10 métodos globais
+# top10_metodos <- ranking_consolidado %>% head(10) %>% pull(metodo)
+# 
+# # Calcular rankings por categoria
+# rankings_sbc <- desempenho_por_sbc %>%
+#   filter(metodo %in% top10_metodos) %>%
+#   group_by(categoria_sbc) %>%
+#   arrange(mae_medio) %>%
+#   mutate(rank = row_number()) %>%
+#   ungroup() %>%
+#   select(categoria_sbc, metodo, rank, mae_medio)
+# 
+# p_heatmap_sbc <- ggplot(rankings_sbc, 
+#                         aes(x = categoria_sbc, y = fct_reorder(metodo, rank, .fun = mean), 
+#                             fill = rank)) +
+#   geom_tile(color = "white", linewidth = 1) +
+#   geom_text(aes(label = rank), color = "white", fontface = "bold", size = 5) +
+#   scale_fill_gradient2(
+#     low = "#00A087FF", 
+#     mid = "#F39B7FFF", 
+#     high = "#E64B35FF",
+#     midpoint = 5.5,
+#     breaks = 1:10
+#   ) +
+#   labs(
+#     title = "Rankings de Métodos por Categoria SBC",
+#     subtitle = "Posição dos Top 10 métodos globais em cada categoria de demanda",
+#     x = "Categoria SBC",
+#     y = NULL,
+#     fill = "Rank",
+#     caption = "Verde = melhor posição; Vermelho = pior posição"
+#   ) +
+#   theme_dissertacao() +
+#   theme(
+#     axis.text.x = element_text(angle = 0, hjust = 0.5),
+#     panel.grid = element_blank()
+#   )
+# 
+# ggsave(
+#   here("output/figures/07_results/04_heatmap_rankings_sbc.png"),
+#   plot = p_heatmap_sbc,
+#   width = 10, height = 8, dpi = 300
+# )
+# 
+# cat("   ✅ Gráfico salvo: 04_heatmap_rankings_sbc.png\n")
 
 # ---------------------------------------------------------------------------
 ## 3.2. Desempenho de Métodos Especializados ####
@@ -333,8 +339,8 @@ p_especializado <- ggplot(comparacao_especializado,
                                "Benchmark" = "#4DBBD5FF")) +
   scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
   labs(
-    title = "Métodos Especializados vs. Benchmarks",
-    subtitle = "Desempenho em categorias Intermittent e Lumpy",
+    # title = "Métodos Especializados vs. Benchmarks",
+    # subtitle = "Desempenho em categorias Intermittent e Lumpy",
     x = NULL,
     y = "MAE Médio",
     fill = "Tipo",
@@ -354,39 +360,39 @@ cat("   ✅ Gráfico salvo: 05_especializado_vs_benchmark.png\n")
 # ---------------------------------------------------------------------------
 ## 3.3. Boxplot de Distribuição por Categoria ####
 # ---------------------------------------------------------------------------
-
-cat("\n📊 3.3. Distribuição de erros por categoria...\n")
-
-# Top 5 métodos globais
-top5_metodos <- ranking_consolidado %>% head(5) %>% pull(metodo)
-
-erros_por_categoria <- metricas_mensais %>%
-  filter(convergence, metodo %in% top5_metodos) %>%
-  select(categoria_sbc, metodo, mae_mensal)
-
-p_boxplot_sbc <- ggplot(erros_por_categoria, 
-                        aes(x = categoria_sbc, y = mae_mensal, fill = metodo)) +
-  geom_boxplot(alpha = 0.7, outlier.size = 0.5, outlier.alpha = 0.3) +
-  scale_y_log10(labels = comma) +
-  scale_fill_nejm() +
-  labs(
-    title = "Distribuição de Erros por Categoria SBC",
-    subtitle = "Top 5 métodos - MAE mensal (escala logarítmica)",
-    x = "Categoria SBC",
-    y = "MAE Mensal (log)",
-    fill = "Método",
-    caption = "Boxplots mostram mediana, quartis e outliers"
-  ) +
-  theme_dissertacao() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-ggsave(
-  here("output/figures/07_results/06_boxplot_erros_categoria.png"),
-  plot = p_boxplot_sbc,
-  width = 11, height = 7, dpi = 300
-)
-
-cat("   ✅ Gráfico salvo: 06_boxplot_erros_categoria.png\n")
+# 
+# cat("\n📊 3.3. Distribuição de erros por categoria...\n")
+# 
+# # Top 5 métodos globais
+# top5_metodos <- ranking_consolidado %>% head(5) %>% pull(metodo)
+# 
+# erros_por_categoria <- metricas_mensais %>%
+#   filter(convergence, metodo %in% top5_metodos) %>%
+#   select(categoria_sbc, metodo, mae_mensal)
+# 
+# p_boxplot_sbc <- ggplot(erros_por_categoria, 
+#                         aes(x = categoria_sbc, y = mae_mensal, fill = metodo)) +
+#   geom_boxplot(alpha = 0.7, outlier.size = 0.5, outlier.alpha = 0.3) +
+#   scale_y_log10(labels = comma) +
+#   scale_fill_nejm() +
+#   labs(
+#     title = "Distribuição de Erros por Categoria SBC",
+#     subtitle = "Top 5 métodos - MAE mensal (escala logarítmica)",
+#     x = "Categoria SBC",
+#     y = "MAE Mensal (log)",
+#     fill = "Método",
+#     caption = "Boxplots mostram mediana, quartis e outliers"
+#   ) +
+#   theme_dissertacao() +
+#   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# 
+# ggsave(
+#   here("output/figures/07_results/06_boxplot_erros_categoria.png"),
+#   plot = p_boxplot_sbc,
+#   width = 11, height = 7, dpi = 300
+# )
+# 
+# cat("   ✅ Gráfico salvo: 06_boxplot_erros_categoria.png\n")
 
 # ===========================================================================
 # BLOCO 4: ESTABILIDADE TEMPORAL ####
@@ -417,16 +423,16 @@ p_evolucao <- ggplot(evolucao_temporal,
                      aes(x = origem_num, y = mae_medio, 
                          color = metodo, group = metodo)) +
   geom_line(linewidth = 1.2, alpha = 0.8) +
-  geom_point(size = 3) +
+  # geom_point(size = 3) +
   scale_color_d3() +
   scale_x_continuous(breaks = 1:6, labels = paste0("Origem ", 1:6)) +
   labs(
-    title = "Estabilidade Temporal dos Métodos",
-    subtitle = "Evolução do MAE médio ao longo das 6 origens temporais",
+    # title = "Estabilidade Temporal dos Métodos",
+    # subtitle = "Evolução do MAE médio ao longo das 6 origens temporais",
     x = "Origem Temporal",
     y = "MAE Médio",
     color = "Método",
-    caption = "Linhas mais planas indicam maior estabilidade"
+    # caption = "Linhas mais planas indicam maior estabilidade"
   ) +
   theme_dissertacao() +
   guides(color = guide_legend(nrow = 2))
@@ -446,22 +452,26 @@ cat("   ✅ Gráfico salvo: 07_evolucao_temporal_mae.png\n")
 cat("\n📊 4.2. Coeficiente de variação temporal...\n")
 
 # Verificar se há CVs calculados
-if(!all(is.na(estabilidade_temporal$mae_cv))) {
+# if(!all(is.na(estabilidade_temporal$mae_cv))) {
   
   cv_top15 <- estabilidade_temporal %>%
     filter(!is.na(mae_cv)) %>%
     arrange(mae_cv) %>%
     head(15) %>%
     mutate(
-      metodo = fct_reorder(metodo, mae_cv),
+      metodo = fct_reorder(metodo, -mae_cv),
       estabilidade_cat = case_when(
         mae_cv < 0.10 ~ "Muito Estável",
         mae_cv < 0.20 ~ "Estável",
         mae_cv < 0.30 ~ "Moderado",
         TRUE ~ "Instável"
-      )
+      ),
+      estabilidade_cat = factor(
+        estabilidade_cat,
+        levels = c("Muito Estável", "Estável", "Moderado", "Instável")
+        )
     )
-  
+
   p_cv_temporal <- ggplot(cv_top15, aes(x = mae_cv, y = metodo, fill = estabilidade_cat)) +
     geom_col(alpha = 0.85) +
     geom_text(aes(label = sprintf("%.3f", mae_cv)), 
@@ -476,8 +486,8 @@ if(!all(is.na(estabilidade_temporal$mae_cv))) {
     ) +
     scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
     labs(
-      title = "Estabilidade Temporal dos Métodos",
-      subtitle = "Coeficiente de Variação (CV) do MAE entre origens - Top 15 mais estáveis",
+      # title = "Estabilidade Temporal dos Métodos",
+      # subtitle = "Coeficiente de Variação (CV) do MAE entre origens - Top 15 mais estáveis",
       x = "Coeficiente de Variação",
       y = NULL,
       fill = "Classificação",
@@ -494,9 +504,9 @@ if(!all(is.na(estabilidade_temporal$mae_cv))) {
   
   cat("   ✅ Gráfico salvo: 08_cv_estabilidade_temporal.png\n")
   
-} else {
-  cat("   ⚠️  CV não disponível (apenas 1 origem). Gráfico não gerado.\n")
-}
+# } else {
+#   cat("   ⚠️  CV não disponível (apenas 1 origem). Gráfico não gerado.\n")
+# }
 
 # ===========================================================================
 # BLOCO 5: TRADE-OFF ACURÁCIA VS. ROBUSTEZ ####
@@ -513,6 +523,7 @@ cat("📊 5.1. Scatter plot acurácia vs. robustez...\n")
 # Preparar dados de trade-off
 trade_off_data <- ranking_consolidado %>%
   select(metodo, familia, mae_medio, taxa_convergencia, rank_mae) %>%
+  filter(taxa_convergencia > 0.5, mae_medio < 10) %>%
   mutate(
     destaque = case_when(
       rank_mae <= 5 ~ metodo,
@@ -599,9 +610,9 @@ if(poisson_presente) {
     filter(metodo == metodo_poisson) %>%
     pull(mae_medio)
   
-  # Calcular ganho para top 15
+  # Calcular ganho para top 9
   ganho_poisson <- ranking_consolidado %>%
-    head(15) %>%
+    head(9) %>%
     mutate(
       ganho_pct = (mae_poisson - mae_medio) / mae_poisson * 100,
       metodo = fct_reorder(metodo, ganho_pct),
@@ -646,7 +657,7 @@ if(poisson_presente) {
     filter(metodo %in% c(top5_metodos, metodo_poisson)) %>%
     mutate(
       destaque = if_else(metodo == metodo_poisson, "Poisson", "Alternativo"),
-      metodo = fct_reorder(metodo, mae_medio)
+      metodo = fct_reorder(metodo, -mae_medio)
     )
   
   p_top5_poisson <- ggplot(top5_vs_poisson, 
@@ -702,9 +713,10 @@ if(!is.null(resultados$dm_results)) {
         dm_pvalue < 0.05 ~ "p < 0.05**",
         dm_pvalue < 0.10 ~ "p < 0.10*",
         TRUE ~ "ns"
-      ),
-      metodo = fct_reorder(metodo, dm_pvalue, .na_rm = TRUE)
-    )
+        ) 
+      ) %>%
+    arrange(-dm_pvalue) %>%
+    mutate(metodo = fct_inorder(metodo))
   
   p_dm_heatmap <- ggplot(dm_data, 
                          aes(x = "vs. Poisson", y = metodo, fill = dm_pvalue)) +
@@ -771,12 +783,12 @@ p_recomendacoes <- ggplot(recomendacoes_plot,
   scale_fill_manual(values = cores_familia) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.25))) +
   labs(
-    title = "Métodos Recomendados por Categoria de Demanda",
-    subtitle = "Melhor método para cada categoria SBC baseado em MAE médio",
+    # title = "Métodos Recomendados por Categoria de Demanda",
+    # subtitle = "Melhor método para cada categoria SBC baseado em MAE médio",
     x = "MAE Médio",
     y = "Categoria SBC",
-    fill = "Família",
-    caption = "Estratégia de portfólio híbrido: método específico por categoria"
+    # fill = "Família",
+    # caption = "Estratégia de portfólio híbrido: método específico por categoria"
   ) +
   theme_dissertacao() +
   theme(legend.position = "right")
@@ -792,103 +804,103 @@ cat("   ✅ Gráfico salvo: 13_recomendacoes_por_categoria.png\n")
 # ===========================================================================
 # BLOCO 9: RESUMO EXECUTIVO (INFOGRÁFICO) ####
 # ===========================================================================
-
-cat("\n", strrep("=", 70), "\n", sep = "")
-cat("BLOCO 9: INFOGRÁFICO DE RESUMO EXECUTIVO\n")
-cat(strrep("=", 70), "\n\n")
-
-log_message("Gerando infográfico de resumo", "INFO")
-
-cat("📊 9.1. Painel de resumo executivo...\n")
-
-# Extrair estatísticas-chave
-metodo_campeao <- ranking_consolidado %>% slice(1)
-n_metodos <- nrow(ranking_consolidado)
-n_materiais <- n_distinct(metricas_mensais$cd_material)
-taxa_conv_global <- mean(metricas_mensais$convergence) * 100
-
-# Criar componentes do painel
-p1_campeao <- ggplot(metodo_campeao, aes(x = "", y = mae_medio)) +
-  geom_col(fill = "#00A087FF", width = 0.7, alpha = 0.8) +
-  geom_text(aes(label = sprintf("%s\nMAE=%.2f", metodo, mae_medio)),
-            vjust = -0.5, size = 5, fontface = "bold") +
-  coord_cartesian(ylim = c(0, max(metodo_campeao$mae_medio) * 1.3)) +
-  labs(title = "🏆 MÉTODO CAMPEÃO", x = NULL, y = "MAE") +
-  theme_dissertacao() +
-  theme(axis.text.x = element_blank())
-
-p2_familia_campeao <- ggplot(ranking_consolidado %>% head(10), 
-                             aes(x = familia, fill = familia)) +
-  geom_bar(alpha = 0.8) +
-  scale_fill_manual(values = cores_familia) +
-  labs(title = "📊 FAMÍLIAS NO TOP 10", x = NULL, y = "Frequência") +
-  theme_dissertacao() +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    legend.position = "none"
-  )
-
-p3_stats <- data.frame(
-  metrica = c("Métodos\nTestados", "Materiais\nAnalisados", 
-              "Taxa de\nConvergência", "Origens\nTemporais"),
-  valor = c(n_metodos, n_materiais, taxa_conv_global, 6)
-) %>%
-  ggplot(aes(x = metrica, y = valor)) +
-  geom_col(fill = "#4DBBD5FF", alpha = 0.8) +
-  geom_text(aes(label = ifelse(metrica == "Taxa de\nConvergência",
-                               sprintf("%.1f%%", valor),
-                               format(valor, big.mark = ","))),
-            vjust = -0.5, size = 5, fontface = "bold") +
-  labs(title = "📈 ESTATÍSTICAS GERAIS", x = NULL, y = NULL) +
-  theme_dissertacao() +
-  theme(axis.text.y = element_blank())
-
-if(poisson_presente) {
-  mae_poisson_val <- ranking_consolidado %>%
-    filter(metodo == metodo_poisson) %>%
-    pull(mae_medio)
-  
-  ganho_max <- max(ganho_poisson$ganho_pct)
-  
-  p4_ganho <- data.frame(
-    categoria = c("Poisson\n(Atual)", "Melhor\nAlternativo", "Ganho"),
-    valor = c(mae_poisson_val, metodo_campeao$mae_medio, ganho_max)
-  ) %>%
-    ggplot(aes(x = categoria, y = valor)) +
-    geom_col(fill = c("#E64B35FF", "#00A087FF", "#F39B7FFF"), alpha = 0.8) +
-    geom_text(aes(label = ifelse(categoria == "Ganho",
-                                 sprintf("+%.1f%%", valor),
-                                 sprintf("%.2f", valor))),
-              vjust = -0.5, size = 5, fontface = "bold") +
-    labs(title = "💰 GANHO VS. POISSON", x = NULL, y = "MAE / Ganho (%)") +
-    theme_dissertacao()
-} else {
-  p4_ganho <- ggplot() + theme_void() + 
-    annotate("text", x = 0.5, y = 0.5, 
-             label = "Poisson não disponível", size = 5)
-}
-
-# Combinar painéis
-painel_resumo <- (p1_campeao | p2_familia_campeao) / (p3_stats | p4_ganho) +
-  plot_annotation(
-    title = "RESUMO EXECUTIVO - ANÁLISE COMPARATIVA DE MÉTODOS DE PREVISÃO",
-    subtitle = sprintf("Sistema de Controle do Espaço Aéreo Brasileiro (SISCEAB) | %d SKUs | %d Métodos | 6 Origens Temporais",
-                       n_materiais, n_metodos),
-    caption = "Fonte: Elaborado pelo autor com base em dados do DECEA (2020-2024)",
-    theme = theme(
-      plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
-      plot.subtitle = element_text(size = 11, hjust = 0.5),
-      plot.caption = element_text(size = 9, hjust = 1)
-    )
-  )
-
-ggsave(
-  here("output/figures/07_results/14_painel_resumo_executivo.png"),
-  plot = painel_resumo,
-  width = 14, height = 10, dpi = 300
-)
-
-cat("   ✅ Gráfico salvo: 14_painel_resumo_executivo.png\n")
+# 
+# cat("\n", strrep("=", 70), "\n", sep = "")
+# cat("BLOCO 9: INFOGRÁFICO DE RESUMO EXECUTIVO\n")
+# cat(strrep("=", 70), "\n\n")
+# 
+# log_message("Gerando infográfico de resumo", "INFO")
+# 
+# cat("📊 9.1. Painel de resumo executivo...\n")
+# 
+# # Extrair estatísticas-chave
+# metodo_campeao <- ranking_consolidado %>% slice(1)
+# n_metodos <- nrow(ranking_consolidado)
+# n_materiais <- n_distinct(metricas_mensais$cd_material)
+# taxa_conv_global <- mean(metricas_mensais$convergence) * 100
+# 
+# # Criar componentes do painel
+# p1_campeao <- ggplot(metodo_campeao, aes(x = "", y = mae_medio)) +
+#   geom_col(fill = "#00A087FF", width = 0.7, alpha = 0.8) +
+#   geom_text(aes(label = sprintf("%s\nMAE=%.2f", metodo, mae_medio)),
+#             vjust = -0.5, size = 5, fontface = "bold") +
+#   coord_cartesian(ylim = c(0, max(metodo_campeao$mae_medio) * 1.3)) +
+#   labs(title = "🏆 MÉTODO CAMPEÃO", x = NULL, y = "MAE") +
+#   theme_dissertacao() +
+#   theme(axis.text.x = element_blank())
+# 
+# p2_familia_campeao <- ggplot(ranking_consolidado %>% head(10), 
+#                              aes(x = familia, fill = familia)) +
+#   geom_bar(alpha = 0.8) +
+#   scale_fill_manual(values = cores_familia) +
+#   labs(title = "📊 FAMÍLIAS NO TOP 10", x = NULL, y = "Frequência") +
+#   theme_dissertacao() +
+#   theme(
+#     axis.text.x = element_text(angle = 45, hjust = 1),
+#     legend.position = "none"
+#   )
+# 
+# p3_stats <- data.frame(
+#   metrica = c("Métodos\nTestados", "Materiais\nAnalisados", 
+#               "Taxa de\nConvergência", "Origens\nTemporais"),
+#   valor = c(n_metodos, n_materiais, taxa_conv_global, 6)
+# ) %>%
+#   ggplot(aes(x = metrica, y = valor)) +
+#   geom_col(fill = "#4DBBD5FF", alpha = 0.8) +
+#   geom_text(aes(label = ifelse(metrica == "Taxa de\nConvergência",
+#                                sprintf("%.1f%%", valor),
+#                                format(valor, big.mark = ","))),
+#             vjust = -0.5, size = 5, fontface = "bold") +
+#   labs(title = "📈 ESTATÍSTICAS GERAIS", x = NULL, y = NULL) +
+#   theme_dissertacao() +
+#   theme(axis.text.y = element_blank())
+# 
+# if(poisson_presente) {
+#   mae_poisson_val <- ranking_consolidado %>%
+#     filter(metodo == metodo_poisson) %>%
+#     pull(mae_medio)
+#   
+#   ganho_max <- max(ganho_poisson$ganho_pct)
+#   
+#   p4_ganho <- data.frame(
+#     categoria = c("Poisson\n(Atual)", "Melhor\nAlternativo", "Ganho"),
+#     valor = c(mae_poisson_val, metodo_campeao$mae_medio, ganho_max)
+#   ) %>%
+#     ggplot(aes(x = categoria, y = valor)) +
+#     geom_col(fill = c("#E64B35FF", "#00A087FF", "#F39B7FFF"), alpha = 0.8) +
+#     geom_text(aes(label = ifelse(categoria == "Ganho",
+#                                  sprintf("+%.1f%%", valor),
+#                                  sprintf("%.2f", valor))),
+#               vjust = -0.5, size = 5, fontface = "bold") +
+#     labs(title = "💰 GANHO VS. POISSON", x = NULL, y = "MAE / Ganho (%)") +
+#     theme_dissertacao()
+# } else {
+#   p4_ganho <- ggplot() + theme_void() + 
+#     annotate("text", x = 0.5, y = 0.5, 
+#              label = "Poisson não disponível", size = 5)
+# }
+# 
+# # Combinar painéis
+# painel_resumo <- (p1_campeao | p2_familia_campeao) / (p3_stats | p4_ganho) +
+#   plot_annotation(
+#     title = "RESUMO EXECUTIVO - ANÁLISE COMPARATIVA DE MÉTODOS DE PREVISÃO",
+#     subtitle = sprintf("Sistema de Controle do Espaço Aéreo Brasileiro (SISCEAB) | %d SKUs | %d Métodos | 6 Origens Temporais",
+#                        n_materiais, n_metodos),
+#     caption = "Fonte: Elaborado pelo autor com base em dados do DECEA (2020-2024)",
+#     theme = theme(
+#       plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+#       plot.subtitle = element_text(size = 11, hjust = 0.5),
+#       plot.caption = element_text(size = 9, hjust = 1)
+#     )
+#   )
+# 
+# ggsave(
+#   here("output/figures/07_results/14_painel_resumo_executivo.png"),
+#   plot = painel_resumo,
+#   width = 14, height = 10, dpi = 300
+# )
+# 
+# cat("   ✅ Gráfico salvo: 14_painel_resumo_executivo.png\n")
 
 # ===========================================================================
 # RELATÓRIO FINAL ####
@@ -932,13 +944,6 @@ cat("\n", strrep("=", 70), "\n")
 cat(sprintf("\n✅ Total de figuras geradas: %d\n", length(figuras_geradas)))
 cat(sprintf("📁 Localização: output/figures/07_results/\n"))
 cat(sprintf("📐 Resolução: 300 DPI (pronto para impressão)\n"))
-cat(sprintf("🎨 Paleta: Cores científicas acessíveis\n"))
-
-cat("\n🎯 PRÓXIMOS PASSOS:\n")
-cat("   1. Revisar todas as figuras geradas\n")
-cat("   2. Selecionar figuras para Capítulo 4 (Resultados)\n")
-cat("   3. Adicionar legendas e notas conforme ABNT\n")
-cat("   4. Integrar com texto da dissertação\n")
 
 cat("\n", strrep("=", 70), "\n", sep = "")
 
