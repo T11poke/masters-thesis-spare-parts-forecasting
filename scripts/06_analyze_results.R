@@ -1063,11 +1063,6 @@ if(!is.null(nemenyi_result)) {
   cat("   - output/analysis/nemenyi_test_result.rds\n")
 }
 
-cat("\n🎯 PRÓXIMAS ETAPAS:\n")
-cat("   1. Executar script 07_advanced_error_visualization.R\n")
-cat("   2. Gerar visualizações para dissertação\n")
-cat("   3. Documentar achados no Capítulo 4 (Resultados)\n")
-
 cat("\n", strrep("=", 70), "\n", sep = "")
 
 log_message("========================================", "INFO")
