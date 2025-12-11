@@ -205,9 +205,7 @@ cat("\n", strrep("=", 70), "\n", sep = "")
 cat("BLOCO 3: BENCHMARKING ESTATÍSTICO GLOBAL\n")
 cat(strrep("=", 70), "\n\n")
 
-# ---------------------------------------------------------------------------
 ## 3.1. Rankings por Métrica - Perspectiva Mensal ####
-# ---------------------------------------------------------------------------
 
 cat("📈 3.1. RANKINGS POR MÉTRICA - PERSPECTIVA MENSAL\n\n")
 
@@ -261,9 +259,7 @@ ranking_bias_mensal <- metricas_metodo_global_mensal %>%
 cat("\n🏆 Top 10 métodos por Bias (menor valor absoluto):\n\n")
 print(ranking_bias_mensal %>% head(10))
 
-# ---------------------------------------------------------------------------
 ## 3.2. Rankings por Métrica - Perspectiva Anual ####
-# ---------------------------------------------------------------------------
 
 cat("\n📈 3.2. RANKINGS POR MÉTRICA - PERSPECTIVA ANUAL\n\n")
 
@@ -282,9 +278,7 @@ ranking_anual <- metricas_metodo_global_anual %>%
 cat("🏆 Top 10 métodos por Erro Absoluto Anual:\n\n")
 print(ranking_anual %>% head(10))
 
-# ---------------------------------------------------------------------------
 ## 3.3. Comparação de Rankings: Mensal vs. Anual ####
-# ---------------------------------------------------------------------------
 
 cat("\n📊 3.3. COMPARAÇÃO DE RANKINGS: MENSAL VS. ANUAL\n\n")
 
@@ -326,9 +320,7 @@ if(cor_spearman > 0.8) {
   cat("   ⚠️  Rankings apresentam diferenças substanciais entre perspectivas\n")
 }
 
-# ---------------------------------------------------------------------------
 ## 3.4. Testes de Significância Estatística ####
-# ---------------------------------------------------------------------------
 
 cat("\n", strrep("-", 70), "\n", sep = "")
 cat("3.4. TESTES DE SIGNIFICÂNCIA ESTATÍSTICA\n")
@@ -505,9 +497,7 @@ cat(strrep("=", 70), "\n\n")
 
 log_message("Análise de desempenho por categoria SBC", "INFO")
 
-# ---------------------------------------------------------------------------
 ## 4.1. Desempenho por Categoria ####
-# ---------------------------------------------------------------------------
 
 cat("📊 4.1. DESEMPENHO POR CATEGORIA SBC\n\n")
 
@@ -541,9 +531,7 @@ top5_por_categoria <- map_dfr(categorias, function(cat) {
 
 print(top5_por_categoria)
 
-# ---------------------------------------------------------------------------
 ## 4.2. Análise de Inversões de Ranking ####
-# ---------------------------------------------------------------------------
 
 cat("\n📊 4.2. ANÁLISE DE INVERSÕES DE RANKING ENTRE CATEGORIAS\n\n")
 
@@ -684,9 +672,7 @@ cat(strrep("=", 70), "\n\n")
 
 log_message("Análise de estabilidade entre origens temporais", "INFO")
 
-# ---------------------------------------------------------------------------
 ## 6.1. Variabilidade entre Origens ####
-# ---------------------------------------------------------------------------
 
 cat("📊 6.1. VARIABILIDADE DE DESEMPENHO ENTRE ORIGENS\n\n")
 
@@ -711,9 +697,7 @@ print(estabilidade_temporal %>% head(10))
 cat("\n⚠️  Métodos mais INSTÁVEIS entre origens (maior CV):\n\n")
 print(estabilidade_temporal %>% arrange(desc(mae_cv)) %>% head(10))
 
-# ---------------------------------------------------------------------------
 ## 6.2. Identificação de Outliers Temporais ####
-# ---------------------------------------------------------------------------
 
 cat("\n📊 6.2. IDENTIFICAÇÃO DE OUTLIERS TEMPORAIS\n\n")
 
@@ -740,9 +724,7 @@ if(nrow(outliers_temporais) > 0) {
   cat("✅ Nenhum outlier temporal significativo detectado.\n")
 }
 
-# ---------------------------------------------------------------------------
 ## 6.3. Análise de Tendências Temporais ####
-# ---------------------------------------------------------------------------
 
 cat("\n📊 6.3. ANÁLISE DE TENDÊNCIAS TEMPORAIS\n\n")
 
@@ -781,9 +763,7 @@ cat(strrep("=", 70), "\n\n")
 
 log_message("Gerando síntese de resultados", "INFO")
 
-# ---------------------------------------------------------------------------
 ## 7.1. Ranking Consolidado Multi-Critério ####
-# ---------------------------------------------------------------------------
 
 cat("🏆 7.1. RANKING CONSOLIDADO MULTI-CRITÉRIO\n\n")
 
@@ -835,9 +815,7 @@ ranking_consolidado <- ranking_mae_mensal %>%
 cat("📊 Ranking Multi-Critério (Top 15):\n\n")
 print(ranking_consolidado %>% head(15))
 
-# ---------------------------------------------------------------------------
 ## 7.2. Identificação de Métodos Recomendados ####
-# ---------------------------------------------------------------------------
 
 cat("\n💡 7.2. MÉTODOS RECOMENDADOS POR CONTEXTO\n\n")
 
@@ -876,9 +854,7 @@ for(i in 1:nrow(recomendacoes_sbc)) {
               recomendacoes_sbc$mae_medio[i]))
 }
 
-# ---------------------------------------------------------------------------
 ## 7.3. Comparação com Método Atual (Poisson) ####
-# ---------------------------------------------------------------------------
 
 if(poisson_presente) {
   cat("\n📊 7.3. COMPARAÇÃO COM MÉTODO ATUAL DO DECEA (POISSON)\n\n")
