@@ -1061,6 +1061,7 @@ cat(sprintf("📈 Total de previsões: %s\n",
 cat("\n📁 Arquivos gerados:\n")
 cat("   - output/forecasts/forecasts_consolidated.rds\n")
 cat("   - output/reports/05_consolidated_metrics.xlsx\n")
+cat("   - output/reports/05_analise_estratificada_familia3.xlsx") 
 cat("   - output/tables/metricas_mensais.csv\n")
 cat("   - output/tables/metricas_anuais.csv\n")
 cat("   - output/tables/resumo_por_metodo.csv\n")
