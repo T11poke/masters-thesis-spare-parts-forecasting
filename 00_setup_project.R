@@ -352,7 +352,7 @@ project_packages <- c(
   
   # Visualização:
   "ggplot2", "patchwork", "ggrepel", "ggthemes", "ggsci", "viridis", "scales", 
-  "corrplot", "treemapify", "plotly", "ggridges", "ggpubr",
+  "corrplot", "treemapify", "plotly", "ggridges", "ggpubr", "gtExtras",
   
   # Tabelas e Relatórios:
   "kableExtra", "DT", "GT",
