@@ -621,49 +621,86 @@ benchmarks_por_categoria <- metricas_mensais %>%
     names_prefix = "benchmark_"
   )
 
-comparacao_f3_benchmarks <- analise_robustez_f3 %>%
-  left_join(benchmarks_por_categoria, by = "categoria_sbc") %>%
-  mutate(
-    # Vantagem sobre Naive
-    vantagem_vs_naive_pct = ((benchmark_Naive / mae_mediano) - 1) * 100,
-    supera_naive = vantagem_vs_naive_pct > 0,
-    
-    # Vantagem sobre Mean
-    vantagem_vs_mean_pct = ((benchmark_Mean / mae_mediano) - 1) * 100,
-    supera_mean = vantagem_vs_mean_pct > 0,
-    
-    # Classificação de competitividade
-    competitividade = case_when(
-      supera_naive & supera_mean ~ "Superior a ambos",
-      supera_naive | supera_mean ~ "Superior a um",
-      TRUE ~ "Inferior a ambos"
+cat("📊 Benchmarks por categoria:\n\n")
+print(benchmarks_por_categoria)
+
+# Verificar se benchmarks existem
+if(nrow(benchmarks_por_categoria) == 0) {
+  cat("\n⚠️  ATENÇÃO: Nenhum benchmark encontrado. Pulando comparação.\n")
+  
+  # Criar objetos vazios para evitar erros
+  comparacao_f3_benchmarks <- tibble()
+  resumo_competitividade <- tibble()
+  
+} else {
+  
+  comparacao_f3_benchmarks <- analise_robustez_f3 %>%
+    left_join(benchmarks_por_categoria, by = "categoria_sbc") %>%
+    mutate(
+      # Verificar se benchmarks estão disponíveis
+      benchmark_Naive = ifelse(is.null(benchmark_Naive), NA_real_, benchmark_Naive),
+      benchmark_Mean = ifelse(is.null(benchmark_Mean), NA_real_, benchmark_Mean),
+      
+      # Vantagem sobre Naive
+      vantagem_vs_naive_pct = if_else(
+        !is.na(benchmark_Naive) & benchmark_Naive > 0,
+        ((benchmark_Naive / mae_mediano) - 1) * 100,
+        NA_real_
+      ),
+      supera_naive = if_else(
+        !is.na(vantagem_vs_naive_pct),
+        vantagem_vs_naive_pct > 0,
+        NA
+      ),
+      
+      # Vantagem sobre Mean
+      vantagem_vs_mean_pct = if_else(
+        !is.na(benchmark_Mean) & benchmark_Mean > 0,
+        ((benchmark_Mean / mae_mediano) - 1) * 100,
+        NA_real_
+      ),
+      supera_mean = if_else(
+        !is.na(vantagem_vs_mean_pct),
+        vantagem_vs_mean_pct > 0,
+        NA
+      ),
+      
+      # Classificação de competitividade
+      competitividade = case_when(
+        is.na(supera_naive) | is.na(supera_mean) ~ "Sem benchmark",
+        supera_naive & supera_mean ~ "Superior a ambos",
+        supera_naive | supera_mean ~ "Superior a um",
+        TRUE ~ "Inferior a ambos"
+      )
+    ) %>%
+    select(
+      metodo, categoria_sbc,
+      mae_mediano, benchmark_Naive, benchmark_Mean,
+      vantagem_vs_naive_pct, vantagem_vs_mean_pct,
+      supera_naive, supera_mean,
+      competitividade
     )
-  ) %>%
-  select(
-    metodo, categoria_sbc,
-    mae_mediano, benchmark_Naive, benchmark_Mean,
-    vantagem_vs_naive_pct, vantagem_vs_mean_pct,
-    competitividade
-  )
-
-cat("📊 Competitividade da Família 3 vs. Benchmarks:\n\n")
-print(comparacao_f3_benchmarks, n = Inf)
-
-# Resumo executivo
-cat("\n📋 RESUMO EXECUTIVO:\n\n")
-
-resumo_competitividade <- comparacao_f3_benchmarks %>%
-  group_by(categoria_sbc) %>%
-  summarise(
-    n_metodos = n(),
-    n_supera_naive = sum(supera_naive),
-    n_supera_mean = sum(supera_mean),
-    prop_supera_naive = mean(supera_naive) * 100,
-    prop_supera_mean = mean(supera_mean) * 100,
-    .groups = 'drop'
-  )
-
-print(resumo_competitividade)
+  
+  cat("\n📊 Competitividade da Família 3 vs. Benchmarks:\n\n")
+  print(comparacao_f3_benchmarks, n = Inf)
+  
+  # Resumo executivo
+  cat("\n📋 RESUMO EXECUTIVO:\n\n")
+  
+  resumo_competitividade <- comparacao_f3_benchmarks %>%
+    filter(!is.na(supera_naive) | !is.na(supera_mean)) %>%
+    group_by(categoria_sbc) %>%
+    summarise(
+      n_metodos = n(),
+      n_supera_naive = sum(supera_naive, na.rm = TRUE),
+      n_supera_mean = sum(supera_mean, na.rm = TRUE),
+      prop_supera_naive = mean(supera_naive, na.rm = TRUE) * 100,
+      prop_supera_mean = mean(supera_mean, na.rm = TRUE) * 100,
+      .groups = 'drop'
+    )
+  
+  print(resumo_competitividade)
+}
 
 
 ## 6.5.4. Visualização: Heatmap de Performance ####
@@ -866,25 +903,36 @@ print(testes_por_metodo)
 analise_estratificada_f3 <- list(
   performance_por_categoria = analise_robustez_f3,
   degradacao_relativa = degradacao_f3,
-  comparacao_benchmarks = comparacao_f3_benchmarks,
-  resumo_competitividade = resumo_competitividade,
+  comparacao_benchmarks = if(nrow(comparacao_f3_benchmarks) > 0) comparacao_f3_benchmarks else NULL,
+  resumo_competitividade = if(nrow(resumo_competitividade) > 0) resumo_competitividade else NULL,
   testes_estatisticos = testes_por_metodo
 )
 
+# Preparar lista de sheets para Excel (apenas com objetos não-vazios)
+sheets_analise <- list(
+  "Performance_por_Categoria" = analise_robustez_f3,
+  "Degradacao_Relativa" = degradacao_f3,
+  "Testes_Estatisticos" = testes_por_metodo
+)
+
+# Adicionar sheets opcionais se existirem
+if(nrow(comparacao_f3_benchmarks) > 0) {
+  sheets_analise[["vs_Benchmarks"]] <- comparacao_f3_benchmarks
+}
+
+if(nrow(resumo_competitividade) > 0) {
+  sheets_analise[["Resumo_Competitividade"]] <- resumo_competitividade
+}
+
 # Salvar em Excel
 write_xlsx(
-  list(
-    "Performance_por_Categoria" = analise_robustez_f3,
-    "Degradacao_Relativa" = degradacao_f3,
-    "vs_Benchmarks" = comparacao_f3_benchmarks,
-    "Resumo_Competitividade" = resumo_competitividade,
-    "Testes_Estatisticos" = testes_por_metodo
-  ),
+  sheets_analise,
   here("output/reports/05_analise_estratificada_familia3.xlsx")
 )
 
 cat("\n✅ Análise estratificada salva:\n")
 cat("   - output/reports/05_analise_estratificada_familia3.xlsx\n")
+cat(sprintf("   - Sheets incluídas: %d\n", length(sheets_analise)))
 
 cat("\n", strrep("=", 70), "\n\n")
 
