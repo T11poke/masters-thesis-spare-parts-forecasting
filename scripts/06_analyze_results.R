@@ -119,16 +119,17 @@ metricas_metodo_global_mensal <- metricas_metodo_origem_mensal %>%
   group_by(metodo, familia) %>%
   summarise(
     n_total = sum(n_materiais),
-    mae_medio = mean(mae_medio),
-    mae_sd = sd(mae_medio),
-    rmse_medio = mean(rmse_medio),
-    rmse_sd = sd(rmse_medio),
-    bias_medio = mean(bias_medio),
-    bias_sd = sd(bias_medio),
-    linlin_medio = mean(linlin_medio),
-    linlin_sd = sd(linlin_medio),
-    mad_mean_medio = mean(mad_mean_medio),
-    per_medio = mean(per_medio),
+    n_origens = n(),
+    mae_medio = mean(mae_medio, na.rm = TRUE),
+    mae_sd = if_else(n() > 1, sd(mae_medio, na.rm = TRUE), NA_real_),
+    rmse_medio = mean(rmse_medio, na.rm = TRUE),
+    rmse_sd = if_else(n() > 1, sd(rmse_medio, na.rm = TRUE), NA_real_),
+    bias_medio = mean(bias_medio, na.rm = TRUE),
+    bias_sd = if_else(n() > 1, sd(bias_medio, na.rm = TRUE), NA_real_),
+    linlin_medio = mean(linlin_medio, na.rm = TRUE),
+    linlin_sd = if_else(n() > 1, sd(linlin_medio, na.rm = TRUE), NA_real_),
+    mad_mean_medio = mean(mad_mean_medio, na.rm = TRUE),
+    per_medio = mean(per_medio, na.rm = TRUE),
     .groups = 'drop'
   )
 
@@ -136,15 +137,34 @@ metricas_metodo_global_anual <- metricas_metodo_origem_anual %>%
   group_by(metodo, familia) %>%
   summarise(
     n_total = sum(n_materiais),
-    erro_abs_medio = mean(erro_abs_medio),
-    erro_abs_sd = sd(erro_abs_medio),
-    erro_perc_medio = mean(erro_perc_medio),
-    prop_super_media = mean(prop_super),
-    prop_sub_media = mean(prop_sub),
+    n_origens = n(),
+    erro_abs_medio = mean(erro_abs_medio, na.rm = TRUE),
+    erro_abs_sd = if_else(n() > 1, sd(erro_abs_medio, na.rm = TRUE), NA_real_),
+    erro_perc_medio = mean(erro_perc_medio, na.rm = TRUE),
+    prop_super_media = mean(prop_super, na.rm = TRUE),
+    prop_sub_media = mean(prop_sub, na.rm = TRUE),
     .groups = 'drop'
   )
 
 cat("✅ Dados agregados preparados\n")
+
+# Diagnóstico de agregação
+cat("\n📊 Diagnóstico de agregação:\n")
+n_origens_por_metodo <- metricas_metodo_origem_mensal %>%
+  count(metodo) %>%
+  pull(n) %>%
+  unique()
+
+cat(sprintf("   - Origens por método: %s\n", 
+            paste(n_origens_por_metodo, collapse = ", ")))
+
+if(all(n_origens_por_metodo == 1)) {
+  cat("   ⚠️  ATENÇÃO: Cada método tem apenas 1 origem.\n")
+  cat("      Desvios-padrão (SD) e coeficientes de variação (CV) serão NA.\n")
+  cat("      Isso é esperado se houver apenas 1 origem temporal nos dados.\n")
+} else {
+  cat(sprintf("   ✅ Múltiplas origens detectadas. SDs serão calculados.\n"))
+}
 
 # ===========================================================================
 # BLOCO 2: ANÁLISE EXPLORATÓRIA INICIAL ####
@@ -216,7 +236,9 @@ ranking_mae_mensal <- metricas_metodo_global_mensal %>%
   arrange(mae_medio) %>%
   mutate(
     rank_mae = row_number(),
-    mae_cv = mae_sd / mae_medio
+    mae_cv = if_else(!is.na(mae_sd) & mae_medio > 0, 
+                     mae_sd / mae_medio, 
+                     NA_real_)
   ) %>%
   select(rank_mae, metodo, familia, mae_medio, mae_sd, mae_cv, n_total)
 
@@ -228,7 +250,9 @@ ranking_rmse_mensal <- metricas_metodo_global_mensal %>%
   arrange(rmse_medio) %>%
   mutate(
     rank_rmse = row_number(),
-    rmse_cv = rmse_sd / rmse_medio
+    rmse_cv = if_else(!is.na(rmse_sd) & rmse_medio > 0, 
+                      rmse_sd / rmse_medio, 
+                      NA_real_)
   ) %>%
   select(rank_rmse, metodo, familia, rmse_medio, rmse_sd, rmse_cv)
 
@@ -240,7 +264,9 @@ ranking_linlin_mensal <- metricas_metodo_global_mensal %>%
   arrange(linlin_medio) %>%
   mutate(
     rank_linlin = row_number(),
-    linlin_cv = linlin_sd / linlin_medio
+    linlin_cv = if_else(!is.na(linlin_sd) & linlin_medio > 0, 
+                        linlin_sd / linlin_medio, 
+                        NA_real_)
   ) %>%
   select(rank_linlin, metodo, familia, linlin_medio, linlin_sd, linlin_cv)
 
@@ -270,7 +296,9 @@ ranking_anual <- metricas_metodo_global_anual %>%
   arrange(erro_abs_medio) %>%
   mutate(
     rank_erro_anual = row_number(),
-    erro_abs_cv = erro_abs_sd / erro_abs_medio
+    erro_abs_cv = if_else(!is.na(erro_abs_sd) & erro_abs_medio > 0, 
+                          erro_abs_sd / erro_abs_medio, 
+                          NA_real_)
   ) %>%
   select(rank_erro_anual, metodo, familia, erro_abs_medio, erro_abs_sd, 
          erro_abs_cv, prop_super_media, prop_sub_media)
@@ -570,7 +598,7 @@ metodos_intermitentes <- c("Croston", "SBA", "TSB")
 
 desempenho_intermitentes <- desempenho_por_sbc %>%
   filter(metodo %in% metodos_intermitentes) %>%
-  select(categoria_sbc, metodo, mae_medio, rank_na_categoria = mae_medio) %>%
+  select(categoria_sbc, metodo, mae_medio) %>%
   group_by(categoria_sbc) %>%
   mutate(rank = rank(mae_medio)) %>%
   ungroup() %>%
@@ -681,21 +709,40 @@ estabilidade_temporal <- metricas_metodo_origem_mensal %>%
   group_by(metodo, familia) %>%
   summarise(
     n_origens = n(),
-    mae_medio_geral = mean(mae_medio),
-    mae_sd_entre_origens = sd(mae_medio),
-    mae_cv = mae_sd_entre_origens / mae_medio_geral,
-    mae_min_origem = min(mae_medio),
-    mae_max_origem = max(mae_medio),
+    mae_medio_geral = mean(mae_medio, na.rm = TRUE),
+    mae_sd_entre_origens = if_else(n() > 1, sd(mae_medio, na.rm = TRUE), NA_real_),
+    mae_cv = if_else(!is.na(mae_sd_entre_origens) & mae_medio_geral > 0,
+                     mae_sd_entre_origens / mae_medio_geral, 
+                     NA_real_),
+    mae_min_origem = min(mae_medio, na.rm = TRUE),
+    mae_max_origem = max(mae_medio, na.rm = TRUE),
     mae_amplitude = mae_max_origem - mae_min_origem,
     .groups = 'drop'
   ) %>%
   arrange(mae_cv)
 
 cat("✅ Métodos mais ESTÁVEIS entre origens (menor CV):\n\n")
-print(estabilidade_temporal %>% head(10))
+
+# Verificar se há múltiplas origens
+if(all(is.na(estabilidade_temporal$mae_cv))) {
+  cat("⚠️  ATENÇÃO: Análise de estabilidade requer múltiplas origens temporais.\n")
+  cat("   Com apenas 1 origem, não é possível calcular variabilidade.\n")
+  cat("   Rankings por amplitude (max - min) ainda disponíveis:\n\n")
+  print(estabilidade_temporal %>% 
+          arrange(mae_amplitude) %>% 
+          select(metodo, familia, mae_medio_geral, mae_amplitude, n_origens) %>%
+          head(10))
+} else {
+  print(estabilidade_temporal %>% head(10))
+}
 
 cat("\n⚠️  Métodos mais INSTÁVEIS entre origens (maior CV):\n\n")
-print(estabilidade_temporal %>% arrange(desc(mae_cv)) %>% head(10))
+
+if(!all(is.na(estabilidade_temporal$mae_cv))) {
+  print(estabilidade_temporal %>% arrange(desc(mae_cv)) %>% head(10))
+} else {
+  cat("   (Análise indisponível com apenas 1 origem temporal)\n")
+}
 
 ## 6.2. Identificação de Outliers Temporais ####
 
@@ -802,8 +849,9 @@ ranking_consolidado <- ranking_mae_mensal %>%
       TRUE ~ "Baixa"
     ),
     
-    # Classificação de estabilidade
+    # Classificação de estabilidade (considerar NA)
     estabilidade = case_when(
+      is.na(mae_cv) ~ "Não aplicável (1 origem)",
       mae_cv < 0.10 ~ "Muito estável",
       mae_cv < 0.20 ~ "Estável",
       mae_cv < 0.30 ~ "Moderadamente variável",
@@ -831,9 +879,16 @@ cat(sprintf("   - MAE médio: %.2f\n",
 cat(sprintf("   - Robustez: %s (%.1f%% convergência)\n",
             ranking_consolidado %>% slice(1) %>% pull(robustez),
             ranking_consolidado %>% slice(1) %>% pull(taxa_convergencia)))
-cat(sprintf("   - Estabilidade: %s (CV=%.3f)\n",
-            ranking_consolidado %>% slice(1) %>% pull(estabilidade),
-            ranking_consolidado %>% slice(1) %>% pull(mae_cv)))
+
+mae_cv_campeao <- ranking_consolidado %>% slice(1) %>% pull(mae_cv)
+estabilidade_campeao <- ranking_consolidado %>% slice(1) %>% pull(estabilidade)
+
+if(is.na(mae_cv_campeao)) {
+  cat(sprintf("   - Estabilidade: %s\n", estabilidade_campeao))
+} else {
+  cat(sprintf("   - Estabilidade: %s (CV=%.3f)\n", 
+              estabilidade_campeao, mae_cv_campeao))
+}
 
 # Métodos recomendados por categoria SBC
 cat("\n📋 MÉTODOS RECOMENDADOS POR CATEGORIA SBC:\n\n")
@@ -985,9 +1040,14 @@ if(any(desempenho_intermitentes$categoria_sbc == "Intermittent" &
 }
 
 cat("\n4. Estabilidade temporal:\n")
-metodos_estaveis <- sum(estabilidade_temporal$mae_cv < 0.20)
-cat(sprintf("   - %d métodos apresentam desempenho estável (CV<0.20)\n",
-            metodos_estaveis))
+if(!all(is.na(estabilidade_temporal$mae_cv))) {
+  metodos_estaveis <- sum(estabilidade_temporal$mae_cv < 0.20, na.rm = TRUE)
+  cat(sprintf("   - %d métodos apresentam desempenho estável (CV<0.20)\n",
+              metodos_estaveis))
+} else {
+  cat("   - Análise de variabilidade indisponível (apenas 1 origem temporal)\n")
+  cat("   - Considere executar com múltiplas origens para análise de estabilidade\n")
+}
 
 if(poisson_presente) {
   cat("\n5. Comparação com método atual (Poisson):\n")
