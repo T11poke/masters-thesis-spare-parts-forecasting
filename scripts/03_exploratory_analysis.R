@@ -153,9 +153,9 @@ p1a <- ggplot(dados_treemap,
   ) +
   facet_wrap(~origem, ncol = 2) +
   labs(
-    title = "Distribuição de Categorias SBC por Origem Temporal",
-    subtitle = "Classificação Syntetos-Boylan-Croston aplicada aos conjuntos de treino",
-    caption = "Tamanho do bloco = Quantidade de materiais | Cores fixas por categoria SBC"
+    # title = "Distribuição de Categorias SBC por Origem Temporal",
+    # subtitle = "Classificação Syntetos-Boylan-Croston aplicada aos conjuntos de treino",
+    # caption = "Tamanho do bloco = Quantidade de materiais | Cores fixas por categoria SBC"
   ) +
   theme_void() +
   theme(
@@ -649,12 +649,12 @@ p_evolucao_stats <- stats_por_categoria %>%
   ) %>%
   ggplot(aes(x = periodo, y = valor, color = categoria_sbc, group = categoria_sbc)) +
   geom_line(linewidth = 1.2) +
-  geom_point(size = 3) +
+  geom_point(size = 2) +
   facet_wrap(~metrica, scales = "free_y", ncol = 1) +
   scale_color_nejm() +
   labs(
-    title = "Evolução Temporal das Características por Categoria SBC",
-    subtitle = "Tendências de ADI, CV² e Demanda Média ao longo das origens temporais",
+    # title = "Evolução Temporal das Características por Categoria SBC",
+    # subtitle = "Tendências de ADI, CV² e Demanda Média ao longo das origens temporais",
     x = "Período de Treino",
     y = "Valor",
     color = "Categoria SBC"
