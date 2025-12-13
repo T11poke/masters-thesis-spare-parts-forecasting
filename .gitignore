@@ -122,3 +122,5 @@ secrets.yaml
 !docs/*.pptx
 /output
 /output
+/output/figures/03_exploratory
+/output/figures
