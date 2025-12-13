@@ -1,7 +1,7 @@
 ═══════════════════════════════════════════════════════════════
 RELATÓRIO EXECUTIVO - ANÁLISE EXPLORATÓRIA DOS DADOS
 Projeto: Previsão de Demanda SISCEAB
-Data: 2025-12-06
+Data: 2025-12-12
 ═══════════════════════════════════════════════════════════════
 
 
