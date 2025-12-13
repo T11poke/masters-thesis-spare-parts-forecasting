@@ -940,6 +940,34 @@ if(poisson_presente) {
   cat("\n⚠️  Método Poisson não disponível para comparação.\n")
 }
 
+## 7.4. Tabela multi critérios mensal ####
+
+cat("\n📊 Preparando Tabela Desempenho médio (perspectiva mensal)...\n")
+
+desempenho_mensal <- metricas_metodo_global_mensal %>%
+  arrange(mae_medio) %>%
+  select(
+    Método = metodo,
+    MAE = mae_medio,
+    RMSE = rmse_medio,
+    Bias = bias_medio,
+    LinLin = linlin_medio,
+    `MAD/Mean` = mad_mean_medio
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~round(., 3))
+  )
+
+cat("✅ Teabela desempenho médio (perspectiva mensal) preparada\n")
+cat(sprintf("   - Métodos: %d\n", nrow(desempenho_mensal)))
+cat(sprintf("   - Métricas: 5 (MAE, RMSE, Bias, LinLin, MAD/Mean)\n"))
+
+# Visualizar primeiras linhas
+cat("\n📋 Prévia da Tabela (Top 10):\n\n")
+print(desempenho_mensal %>% head(10))
+
+
+
 # ===========================================================================
 # BLOCO 8: EXPORTAÇÃO DE TABELAS PARA DISSERTAÇÃO ####
 # ===========================================================================
@@ -966,16 +994,18 @@ tabelas_dissertacao <- list(
   
   "7_Taxa_Convergencia" = taxa_convergencia,
   
-  "8_Comparacao_Mensal_Anual" = comparacao_rankings %>% head(20)
+  "8_Comparacao_Mensal_Anual" = comparacao_rankings %>% head(20),
+  
+  "9_Comparação_mensal_multicriterio" = desempenho_mensal %>% head(20)
 )
 
 # Adicionar tabelas condicionais
 if(poisson_presente && !is.null(dm_results)) {
-  tabelas_dissertacao[["9_Teste_DM_vs_Poisson"]] <- dm_results
+  tabelas_dissertacao[["10_Teste_DM_vs_Poisson"]] <- dm_results
 }
 
 if(!is.null(desempenho_por_subsistema)) {
-  tabelas_dissertacao[["10_Desempenho_Subsistema"]] <- top3_por_subsistema
+  tabelas_dissertacao[["11_Desempenho_Subsistema"]] <- top3_por_subsistema
 }
 
 # Salvar Excel
