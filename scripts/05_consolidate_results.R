@@ -410,14 +410,38 @@ log_message("Calculando métricas anuais agregadas", "INFO")
 
 tic("Cálculo de métricas anuais")
 
-metricas_anuais <- metricas_mensais %>%
+## 5.1. Agregar demanda em perspectiva anual ####
+
+cat("📊 5.1. Agregando demanda mensal em perspectiva anual...\n")
+
+demanda_anual_agregada <- metricas_mensais %>%
   group_by(origem, cd_material, categoria_sbc, metodo, familia, convergence) %>%
   summarise(
     # Agregar demanda em 12 meses
     demanda_real_anual = sum(demanda_real_total, na.rm = TRUE),
     demanda_prevista_anual = sum(demanda_prevista_total, na.rm = TRUE),
     
-    # Calcular erro na perspectiva anual
+    # Estatísticas descritivas
+    n_meses = n(),
+    n_zeros_real_total = sum(n_zeros_real),
+    n_zeros_pred_total = sum(n_zeros_pred),
+    
+    .groups = 'drop'
+  )
+
+cat(sprintf("✅ Demanda agregada: %s linhas\n", 
+            format(nrow(demanda_anual_agregada), big.mark = ",")))
+
+## 5.2. Calcular métricas de erro completas (perspectiva anual) ####
+
+cat("\n📊 5.2. Calculando métricas de erro na perspectiva anual...\n")
+
+# Parâmetro LinLin
+p_linlin <- config$parameters$metrics$linlin$p
+
+metricas_anuais <- demanda_anual_agregada %>%
+  mutate(
+    # Erro absoluto e percentual (mantidos para compatibilidade)
     erro_absoluto_anual = abs(demanda_real_anual - demanda_prevista_anual),
     
     erro_percentual_anual = if_else(
@@ -433,31 +457,69 @@ metricas_anuais <- metricas_mensais %>%
       TRUE ~ "Exato"
     ),
     
-    # Métricas médias mensais (para referência)
-    mae_mensal_medio = mean(mae_mensal, na.rm = TRUE),
-    rmse_mensal_medio = mean(rmse_mensal, na.rm = TRUE),
-    bias_mensal_medio = mean(bias_mensal, na.rm = TRUE),
-    linlin_mensal_medio = mean(linlin_mensal, na.rm = TRUE),
+    # MÉTRICAS COMPLETAS (equivalentes às mensais)
+
+    # MAE anual (igual ao erro absoluto, mas mantemos nomenclatura consistente)
+    mae_anual = abs(demanda_real_anual - demanda_prevista_anual),
     
-    # Estatísticas descritivas
-    n_zeros_real_total = sum(n_zeros_real),
-    n_zeros_pred_total = sum(n_zeros_pred),
+    # RMSE anual (erro ao quadrado)
+    rmse_anual = sqrt((demanda_real_anual - demanda_prevista_anual)^2),
     
-    .groups = 'drop'
+    # Bias anual (viés sistemático)
+    bias_anual = demanda_prevista_anual - demanda_real_anual,
+    
+    # LinLin anual (função de perda assimétrica)
+    linlin_anual = case_when(
+      # Subestimação (erro negativo: previsto < real)
+      demanda_prevista_anual < demanda_real_anual ~ 
+        p_linlin * abs(demanda_real_anual - demanda_prevista_anual),
+      
+      # Superestimação (erro positivo: previsto > real)
+      demanda_prevista_anual >= demanda_real_anual ~ 
+        (1 - p_linlin) * abs(demanda_real_anual - demanda_prevista_anual)
+    ),
+    
+    # MAD/Mean anual (erro relativo normalizado)
+    mad_mean_anual = if_else(
+      demanda_real_anual > 0,
+      abs(demanda_real_anual - demanda_prevista_anual) / demanda_real_anual,
+      NA_real_
+    )
   )
 
-toc()
-
-cat("\n✅ Métricas anuais agregadas calculadas\n")
+cat("✅ Métricas anuais completas calculadas\n")
 cat(sprintf("   - Total de linhas: %s\n", 
             format(nrow(metricas_anuais), big.mark = ",")))
+cat("   - Métricas: MAE, RMSE, Bias, LinLin, MAD/Mean (perspectiva anual)\n")
 
-# Resumo de erros anuais por tipo
+## 5.3. Resumo estatístico das métricas anuais ####
+
+
+cat("\n📊 5.3. Resumo estatístico das métricas anuais:\n\n")
+
+metricas_anuais %>%
+  filter(convergence) %>%
+  select(mae_anual, rmse_anual, bias_anual, linlin_anual, mad_mean_anual) %>%
+  summary() %>%
+  print()
+
+# Distribuição de tipos de erro anual
 cat("\n📊 Distribuição de tipos de erro anual:\n")
 metricas_anuais %>%
   count(tipo_erro_anual) %>%
   mutate(prop = n / sum(n) * 100) %>%
+  arrange(desc(n)) %>%
   print()
+
+# Comparação de convergência entre perspectivas
+cat("\n🔍 Consistência de convergência (mensal vs anual):\n")
+cat(sprintf("   - Taxa convergência mensal: %.1f%%\n",
+            mean(metricas_mensais$convergence) * 100))
+cat(sprintf("   - Taxa convergência anual: %.1f%%\n",
+            mean(metricas_anuais$convergence) * 100))
+cat("   (Devem ser idênticas - validação de consistência)\n")
+
+toc()
 
 # ===========================================================================
 # BLOCO 6: ESTATÍSTICAS DESCRITIVAS GLOBAIS ####

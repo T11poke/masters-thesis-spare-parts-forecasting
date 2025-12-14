@@ -285,23 +285,240 @@ ranking_bias_mensal <- metricas_metodo_global_mensal %>%
 cat("\n🏆 Top 10 métodos por Bias (menor valor absoluto):\n\n")
 print(ranking_bias_mensal %>% head(10))
 
-## 3.2. Rankings por Métrica - Perspectiva Anual ####
+## 3.2. Rankings Globais - Perspectiva ANUAL ####
 
+cat("\n📊 3.2. Rankings globais - PERSPECTIVA ANUAL...\n")
+
+# Agregar métricas anuais por método e origem
+metricas_metodo_origem_anual <- metricas_anuais %>%
+  filter(convergence) %>%
+  group_by(metodo, familia, origem) %>%
+  summarise(
+    n_materiais = n(),
+    mae_anual_medio = mean(mae_anual, na.rm = TRUE),
+    rmse_anual_medio = mean(rmse_anual, na.rm = TRUE),
+    bias_anual_medio = mean(bias_anual, na.rm = TRUE),
+    linlin_anual_medio = mean(linlin_anual, na.rm = TRUE),
+    mad_mean_anual_medio = mean(mad_mean_anual, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# Agregar por método (média entre origens)
+metricas_metodo_global_anual <- metricas_metodo_origem_anual %>%
+  group_by(metodo, familia) %>%
+  summarise(
+    n_total = sum(n_materiais),
+    n_origens = n(),
+    
+    # MAE anual
+    mae_anual_medio = mean(mae_anual_medio, na.rm = TRUE),
+    mae_anual_sd = if_else(n() > 1, sd(mae_anual_medio, na.rm = TRUE), NA_real_),
+    mae_anual_cv = if_else(!is.na(mae_anual_sd) & mae_anual_medio > 0, 
+                           mae_anual_sd / mae_anual_medio, NA_real_),
+    
+    # RMSE anual
+    rmse_anual_medio = mean(rmse_anual_medio, na.rm = TRUE),
+    rmse_anual_sd = if_else(n() > 1, sd(rmse_anual_medio, na.rm = TRUE), NA_real_),
+    rmse_anual_cv = if_else(!is.na(rmse_anual_sd) & rmse_anual_medio > 0, 
+                            rmse_anual_sd / rmse_anual_medio, NA_real_),
+    
+    # Bias anual
+    bias_anual_medio = mean(bias_anual_medio, na.rm = TRUE),
+    bias_anual_sd = if_else(n() > 1, sd(bias_anual_medio, na.rm = TRUE), NA_real_),
+    bias_anual_abs_medio = mean(abs(bias_anual_medio), na.rm = TRUE),
+    
+    # LinLin anual
+    linlin_anual_medio = mean(linlin_anual_medio, na.rm = TRUE),
+    linlin_anual_sd = if_else(n() > 1, sd(linlin_anual_medio, na.rm = TRUE), NA_real_),
+    linlin_anual_cv = if_else(!is.na(linlin_anual_sd) & linlin_anual_medio > 0, 
+                              linlin_anual_sd / linlin_anual_medio, NA_real_),
+    
+    # MAD/Mean anual
+    mad_mean_anual_medio = mean(mad_mean_anual_medio, na.rm = TRUE),
+    
+    .groups = 'drop'
+  )
+
+cat("✅ Dados agregados preparados (perspectiva anual)\n")
+
+
+## 3.2.1. Ranking por MAE Anual ####
+
+
+ranking_mae_anual <- metricas_metodo_global_anual %>%
+  arrange(mae_anual_medio) %>%
+  mutate(
+    rank_mae_anual = row_number(),
+    mae_anual_cv = if_else(!is.na(mae_anual_sd) & mae_anual_medio > 0, 
+                           mae_anual_sd / mae_anual_medio, NA_real_)
+  ) %>%
+  select(rank_mae_anual, metodo, familia, mae_anual_medio, 
+         mae_anual_sd, mae_anual_cv, n_total)
+
+cat("\n🏆 Top 10 métodos por MAE ANUAL:\n\n")
+print(ranking_mae_anual %>% head(10))
+
+
+## 3.2.2. Ranking por RMSE Anual ####
+
+
+ranking_rmse_anual <- metricas_metodo_global_anual %>%
+  arrange(rmse_anual_medio) %>%
+  mutate(
+    rank_rmse_anual = row_number(),
+    rmse_anual_cv = if_else(!is.na(rmse_anual_sd) & rmse_anual_medio > 0, 
+                            rmse_anual_sd / rmse_anual_medio, NA_real_)
+  ) %>%
+  select(rank_rmse_anual, metodo, familia, rmse_anual_medio, 
+         rmse_anual_sd, rmse_anual_cv)
+
+cat("\n🏆 Top 10 métodos por RMSE ANUAL:\n\n")
+print(ranking_rmse_anual %>% head(10))
+
+
+## 3.2.3. Ranking por LinLin Anual ####
+
+
+ranking_linlin_anual <- metricas_metodo_global_anual %>%
+  arrange(linlin_anual_medio) %>%
+  mutate(
+    rank_linlin_anual = row_number(),
+    linlin_anual_cv = if_else(!is.na(linlin_anual_sd) & linlin_anual_medio > 0, 
+                              linlin_anual_sd / linlin_anual_medio, NA_real_)
+  ) %>%
+  select(rank_linlin_anual, metodo, familia, linlin_anual_medio, 
+         linlin_anual_sd, linlin_anual_cv)
+
+cat("\n🏆 Top 10 métodos por LinLin ANUAL:\n\n")
+print(ranking_linlin_anual %>% head(10))
+
+
+## 3.2.4. Ranking por Menor Bias Anual (|Bias|) ####
+
+
+ranking_bias_anual <- metricas_metodo_global_anual %>%
+  arrange(bias_anual_abs_medio) %>%
+  mutate(
+    rank_bias_anual = row_number()
+  ) %>%
+  select(rank_bias_anual, metodo, familia, bias_anual_medio, 
+         bias_anual_abs_medio, bias_anual_sd)
+
+cat("\n🏆 Top 10 métodos com menor |Bias| ANUAL:\n\n")
+print(ranking_bias_anual %>% head(10))
+
+
+## 3.2.5. Ranking Consolidado Anual ####
+
+
+cat("\n📊 3.2.5. Consolidando ranking anual multi-métrica...\n")
+
+ranking_consolidado_anual <- metricas_metodo_global_anual %>%
+  left_join(
+    ranking_mae_anual %>% select(metodo, rank_mae_anual),
+    by = "metodo"
+  ) %>%
+  left_join(
+    ranking_rmse_anual %>% select(metodo, rank_rmse_anual),
+    by = "metodo"
+  ) %>%
+  left_join(
+    ranking_linlin_anual %>% select(metodo, rank_linlin_anual),
+    by = "metodo"
+  ) %>%
+  left_join(
+    ranking_bias_anual %>% select(metodo, rank_bias_anual),
+    by = "metodo"
+  ) %>%
+  mutate(
+    # Ranking médio (Borda count)
+    rank_medio_anual = (rank_mae_anual + rank_rmse_anual + 
+                          rank_linlin_anual + rank_bias_anual) / 4
+  ) %>%
+  arrange(rank_medio_anual)
+
+cat("\n🏆 Top 15 métodos - RANKING CONSOLIDADO ANUAL:\n\n")
+print(ranking_consolidado_anual %>% 
+        select(metodo, familia, rank_medio_anual, rank_mae_anual, 
+               rank_rmse_anual, rank_linlin_anual, rank_bias_anual,
+               mae_anual_medio, bias_anual_medio) %>%
+        head(15))
+
+
+## 3.3. Comparação Mensal vs. Anual ####
+
+
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("📊 3.3. COMPARAÇÃO: PERSPECTIVA MENSAL VS. ANUAL\n")
+cat(strrep("=", 70), "\n\n")
+
+# Juntar rankings mensal e anual
+comparacao_rankings_completa <- ranking_mae_mensal %>%
+  select(metodo, rank_mae_mensal = rank_mae, mae_mensal = mae_medio) %>%
+  left_join(
+    ranking_mae_anual %>% select(metodo, rank_mae_anual, mae_anual = mae_anual_medio),
+    by = "metodo"
+  ) %>%
+  mutate(
+    diferenca_rank = abs(rank_mae_mensal - rank_mae_anual),
+    tipo_diferenca = case_when(
+      diferenca_rank == 0 ~ "Rank Idêntico",
+      diferenca_rank <= 2 ~ "Pequena Variação (≤2)",
+      diferenca_rank <= 5 ~ "Variação Moderada (3-5)",
+      TRUE ~ "Grande Variação (>5)"
+    )
+  ) %>%
+  arrange(desc(diferenca_rank))
+
+# Correlação de Spearman entre rankings
+cor_spearman_mensal_anual <- cor(
+  comparacao_rankings_completa$rank_mae_mensal,
+  comparacao_rankings_completa$rank_mae_anual,
+  method = "spearman",
+  use = "complete.obs"
+)
+
+cat(sprintf("🔍 Correlação de Spearman (rankings mensal vs anual): ρ = %.3f\n\n",
+            cor_spearman_mensal_anual))
+
+if(cor_spearman_mensal_anual > 0.9) {
+  cat("   ✅ ALTA CONSISTÊNCIA: Rankings muito similares entre perspectivas\n")
+} else if(cor_spearman_mensal_anual > 0.7) {
+  cat("   ⚠️  CONSISTÊNCIA MODERADA: Algumas diferenças entre perspectivas\n")
+} else {
+  cat("   ❌ BAIXA CONSISTÊNCIA: Rankings divergem substancialmente\n")
+}
+
+# Métodos com maior divergência
+cat("\n⚡ Métodos com MAIOR divergência entre rankings mensal/anual:\n\n")
+print(comparacao_rankings_completa %>% 
+        select(metodo, rank_mae_mensal, rank_mae_anual, diferenca_rank, tipo_diferenca) %>%
+        head(10))
+
+# Estatísticas da comparação
+cat("\n📊 Distribuição de tipos de diferença:\n")
+comparacao_rankings_completa %>%
+  count(tipo_diferenca) %>%
+  mutate(prop = n / sum(n) * 100) %>%
+  arrange(desc(n)) %>%
+  print()
+
+###################################
 cat("\n📈 3.2. RANKINGS POR MÉTRICA - PERSPECTIVA ANUAL\n\n")
 
 log_message("Gerando rankings por métrica - perspectiva anual", "INFO")
 
 # Ranking por Erro Absoluto Anual
 ranking_anual <- metricas_metodo_global_anual %>%
-  arrange(erro_abs_medio) %>%
+  arrange(mae_anual_medio) %>%
   mutate(
     rank_erro_anual = row_number(),
-    erro_abs_cv = if_else(!is.na(erro_abs_sd) & erro_abs_medio > 0, 
-                          erro_abs_sd / erro_abs_medio, 
+    erro_mae_cv = if_else(!is.na(mae_anual_sd) & mae_anual_medio > 0,
+                          mae_anual_sd / mae_anual_medio,
                           NA_real_)
   ) %>%
-  select(rank_erro_anual, metodo, familia, erro_abs_medio, erro_abs_sd, 
-         erro_abs_cv, prop_super_media, prop_sub_media)
+  select(rank_erro_anual, metodo, familia, mae_anual_medio, mae_anual_sd,
+         erro_mae_cv)
 
 cat("🏆 Top 10 métodos por Erro Absoluto Anual:\n\n")
 print(ranking_anual %>% head(10))
@@ -826,7 +1043,7 @@ ranking_consolidado <- ranking_mae_mensal %>%
     by = "metodo"
   ) %>%
   left_join(
-    ranking_anual %>% select(metodo, rank_erro_anual, erro_abs_medio),
+    ranking_anual %>% select(metodo, rank_erro_anual, mae_anual_medio),
     by = "metodo"
   ) %>%
   left_join(
@@ -966,7 +1183,29 @@ cat(sprintf("   - Métricas: 5 (MAE, RMSE, Bias, LinLin, MAD/Mean)\n"))
 cat("\n📋 Prévia da Tabela (Top 10):\n\n")
 print(desempenho_mensal %>% head(10))
 
+cat("\n📊 Preparando Tabela 8 - Desempenho médio (perspectiva ANUAL)...\n")
 
+tabela_8_desempenho_anual <- metricas_metodo_global_anual %>%
+  arrange(mae_anual_medio) %>%
+  select(
+    Método = metodo,
+    MAE = mae_anual_medio,
+    RMSE = rmse_anual_medio,
+    Bias = bias_anual_medio,
+    LinLin = linlin_anual_medio,
+    `MAD/Mean` = mad_mean_anual_medio
+  ) %>%
+  mutate(
+    across(where(is.numeric), ~round(., 3))
+  )
+
+cat("✅ Tabela 8 preparada\n")
+cat(sprintf("   - Métodos: %d\n", nrow(tabela_8_desempenho_anual)))
+cat(sprintf("   - Métricas: 5 (MAE, RMSE, Bias, LinLin, MAD/Mean) - perspectiva ANUAL\n"))
+
+# Visualizar primeiras linhas
+cat("\n📋 Prévia da Tabela 8 (Top 10):\n\n")
+print(tabela_8_desempenho_anual %>% head(10))
 
 # ===========================================================================
 # BLOCO 8: EXPORTAÇÃO DE TABELAS PARA DISSERTAÇÃO ####
@@ -996,7 +1235,9 @@ tabelas_dissertacao <- list(
   
   "8_Comparacao_Mensal_Anual" = comparacao_rankings %>% head(20),
   
-  "9_Comparação_mensal_multicriterio" = desempenho_mensal %>% head(20)
+  "9_Comparação_mensal_multicriterio" = desempenho_mensal %>% head(20),
+  
+  "metricas_anuais" = tabela_8_desempenho_anual
 )
 
 # Adicionar tabelas condicionais
@@ -1100,3 +1341,4 @@ log_message("ANÁLISE ESTATÍSTICA FINALIZADA COM SUCESSO", "INFO")
 log_message("========================================", "INFO")
 
 cat("\n✅ Script 06 finalizado em:", format(Sys.time()), "\n\n")
+
