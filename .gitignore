@@ -121,8 +121,4 @@ secrets.yaml
 !docs/*.docx
 !docs/*.pptx
 /output
-/output
-/output/figures/03_exploratory
 /output/figures
-/output/figures/03_exploratory
-output/figures/03_exploratory/06_exemplos_series_temporais.png
