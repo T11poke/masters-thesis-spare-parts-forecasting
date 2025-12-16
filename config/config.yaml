@@ -43,7 +43,7 @@ parameters:
   seed: 42
   
   validation:
-    n_origins: 6
+    n_origins: 1
     test_months: 12
     train_min_months: 36
   
