@@ -804,8 +804,8 @@ exemplos <- tibble(
     cd_material = map_chr(
       categoria,
       ~selecionar_material_exemplo(
-        splits_list$origem_1$sbc_classification,
-        splits_list$origem_1$train,
+        splits_list$origem_6$sbc_classification,
+        splits_list$origem_6$train,
         .x,
         criterio = "mediano"
       )
@@ -869,16 +869,16 @@ plots_exemplos <- map2(
   exemplos$categoria,
   ~plot_serie_exemplo(
     .x, .y, 
-    splits_list$origem_1$train, 
-    splits_list$origem_1$sbc_classification
+    splits_list$origem_6$train, 
+    splits_list$origem_6$sbc_classification
   )
 )
 
 # Combinar em grid
 p6 <- wrap_plots(plots_exemplos, ncol = 2) +
   plot_annotation(
-    title = "Exemplos de Séries Temporais por Categoria SBC",
-    subtitle = "Materiais selecionados como representativos de cada padrão de demanda",
+    # title = "Exemplos de Séries Temporais por Categoria SBC",
+    # subtitle = "Materiais selecionados como representativos de cada padrão de demanda",
     theme = theme(plot.title = element_text(face = "bold", size = 16))
   )
 

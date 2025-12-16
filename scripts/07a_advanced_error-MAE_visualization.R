@@ -67,7 +67,7 @@ theme_dissertacao <- function() {
 
 # Paleta de cores por família
 cores_familia <- c(
-  "Familia_1_Benchmarks" = "#E64B35FF",
+  "Familia_1_Classicos" = "#E64B35FF",
   "Familia_2_Suavizacao" = "#4DBBD5FF",
   "Familia_3_Intermitentes" = "#00A087FF",
   "Familia_4_Probabilisticos" = "#3C5488FF",
@@ -455,7 +455,7 @@ cat("\n📊 4.2. Coeficiente de variação temporal...\n")
 # if(!all(is.na(estabilidade_temporal$mae_cv))) {
   
   cv_top15 <- estabilidade_temporal %>%
-    filter(!is.na(mae_cv)) %>%
+    filter(!is.na(mae_cv), metodo != "Gamma", metodo != "TSLM") %>%
     arrange(mae_cv) %>%
     head(15) %>%
     mutate(
@@ -606,15 +606,15 @@ if(poisson_presente) {
   cat("📊 6.1. Ganho percentual sobre Poisson...\n")
   
   # Extrair MAE do Poisson
-  mae_poisson <- ranking_consolidado %>%
+  linlin_poisson <- ranking_consolidado %>%
     filter(metodo == metodo_poisson) %>%
-    pull(mae_medio)
+    pull(linlin_medio)
   
   # Calcular ganho para top 9
   ganho_poisson <- ranking_consolidado %>%
     head(9) %>%
     mutate(
-      ganho_pct = (mae_poisson - mae_medio) / mae_poisson * 100,
+      ganho_pct = (linlin_poisson - linlin_medio) / linlin_poisson * 100,
       metodo = fct_reorder(metodo, ganho_pct),
       positivo = ganho_pct > 0
     )
@@ -629,12 +629,12 @@ if(poisson_presente) {
     scale_fill_manual(values = c("TRUE" = "#00A087FF", "FALSE" = "#E64B35FF")) +
     scale_x_continuous(labels = function(x) paste0(x, "%")) +
     labs(
-      title = sprintf("Ganho de Desempenho em Relação ao Poisson (MAE = %.2f)", 
-                      mae_poisson),
-      subtitle = "Top 15 métodos - Redução percentual de erro",
+      # title = sprintf("Ganho de Desempenho em Relação ao Poisson (LinLin = %.2f)", 
+                      # linlin_poisson),
+      # subtitle = "Top 15 métodos - Redução percentual de erro",
       x = "Ganho (%)",
       y = NULL,
-      caption = "Valores positivos = melhoria sobre Poisson; Negativos = piora"
+      # caption = "Valores positivos = melhoria sobre Poisson; Negativos = piora"
     ) +
     theme_dissertacao() +
     theme(legend.position = "none")
@@ -654,26 +654,26 @@ if(poisson_presente) {
   cat("\n📊 6.2. Comparação direta top 5 vs. Poisson...\n")
   
   top5_vs_poisson <- ranking_consolidado %>%
-    filter(metodo %in% c(top5_metodos, metodo_poisson)) %>%
+    filter(metodo %in% c(top8_metodos, metodo_poisson)) %>%
     mutate(
       destaque = if_else(metodo == metodo_poisson, "Poisson", "Alternativo"),
-      metodo = fct_reorder(metodo, -mae_medio)
+      metodo = fct_reorder(metodo, -linlin_medio)
     )
   
   p_top5_poisson <- ggplot(top5_vs_poisson, 
-                           aes(x = mae_medio, y = metodo, fill = destaque)) +
+                           aes(x = linlin_medio, y = metodo, fill = destaque)) +
     geom_col(alpha = 0.85) +
-    geom_text(aes(label = sprintf("%.2f", mae_medio)), 
+    geom_text(aes(label = sprintf("%.2f", linlin_medio)), 
               hjust = -0.2, size = 4, fontface = "bold") +
     scale_fill_manual(values = c("Poisson" = "#E64B35FF", "Alternativo" = "#00A087FF")) +
     scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
     labs(
-      title = "Comparação: Top 5 Métodos Alternativos vs. Poisson (Método Atual DECEA)",
-      subtitle = "MAE médio mensal",
-      x = "MAE Médio",
+      # title = "Comparação: Top 5 Métodos Alternativos vs. Poisson (Método Atual DECEA)",
+      # subtitle = "LinLin médio mensal",
+      x = "LinLin Médio",
       y = NULL,
       fill = "Tipo",
-      caption = "Método Poisson representa a prática atual do DECEA"
+      # caption = "Método Poisson representa a prática atual do DECEA"
     ) +
     theme_dissertacao() +
     theme(legend.position = "right")
@@ -952,3 +952,4 @@ log_message("VISUALIZAÇÕES FINALIZADAS COM SUCESSO", "INFO")
 log_message("========================================", "INFO")
 
 cat("\n✅ Script 07 finalizado em:", format(Sys.time()), "\n\n")
+

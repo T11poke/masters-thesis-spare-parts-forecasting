@@ -605,7 +605,7 @@ if(poisson_presente) {
   metodo_poisson <- metodos_disponiveis[str_detect(tolower(metodos_disponiveis), "poisson")][1]
   
   # Top 10 métodos por MAE
-  top10_metodos <- ranking_mae_mensal %>% 
+  top10_metodos <- ranking_linlin_mensal %>% 
     head(10) %>% 
     pull(metodo)
   
@@ -615,18 +615,18 @@ if(poisson_presente) {
     # Erros do método em teste
     erros_teste <- metricas_mensais %>%
       filter(metodo == metodo_teste, convergence) %>%
-      pull(mae_mensal)
+      pull(linlin_mensal)
     
     # Erros do Poisson
     erros_poisson <- metricas_mensais %>%
       filter(metodo == metodo_poisson, convergence) %>%
-      pull(mae_mensal)
+      pull(linlin_mensal)
     
     # Alinhar por cd_material e origem para comparação pareada
     dados_alinhados <- metricas_mensais %>%
       filter(convergence) %>%
-      select(cd_material, origem, metodo, mae_mensal) %>%
-      pivot_wider(names_from = metodo, values_from = mae_mensal) %>%
+      select(cd_material, origem, metodo, linlin_mensal) %>%
+      pivot_wider(names_from = metodo, values_from = linlin_mensal) %>%
       filter(!is.na(!!sym(metodo_teste)), !is.na(!!sym(metodo_poisson)))
     
     if(nrow(dados_alinhados) < 10) {
@@ -769,9 +769,12 @@ top5_por_categoria <- map_dfr(categorias, function(cat) {
   desempenho_por_sbc %>%
     filter(categoria_sbc == cat) %>%
     arrange(mae_medio) %>%
-    head(5) %>%
+    head(15) %>%
     mutate(rank = row_number()) %>%
-    select(categoria_sbc, rank, metodo, familia, mae_medio, n_materiais)
+    select(
+      categoria_sbc, rank, metodo, familia, mae_medio, rmse_medio,
+      bias_medio, linlin_medio, n_materiais
+      )
 })
 
 print(top5_por_categoria)
