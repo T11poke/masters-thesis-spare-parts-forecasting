@@ -121,4 +121,3 @@ secrets.yaml
 !docs/*.docx
 !docs/*.pptx
 /output
-/output/figures
