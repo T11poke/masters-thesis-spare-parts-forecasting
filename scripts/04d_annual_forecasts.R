@@ -745,8 +745,6 @@ if(DEBUG_MODE) {
   cat("╚════════════════════════════════════════════════════════════╝\n")
 }
 
-cat("\n✅ Próximo passo: Integrar resultados no script 05\n")
-
 log_message("========================================", "INFO")
 log_message("FORECASTING ANUAL FINALIZADO", "INFO")
 log_message("========================================", "INFO")
