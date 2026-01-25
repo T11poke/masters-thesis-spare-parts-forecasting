@@ -4,7 +4,7 @@
 # Descrição: Consolida forecasts das 3 famílias, calcula métricas de erro
 #            e prepara dados para análise comparativa
 # Data: 2025-12-08
-# Versão: 1.0.3
+# Versão: 2.0.0 - Incluída previsão com série anual.
 #
 # OBJETIVOS:
 # 1. Consolidar forecasts_baseline + intermittent + probabilistic
@@ -68,9 +68,10 @@ log_message("Carregando forecasts das 3 famílias", "INFO")
 
 # Validar existência dos arquivos
 arquivos_necessarios <- c(
-  "baseline" = here("output/forecasts/baseline/forecasts_baseline.rds"),
-  "intermittent" = here("output/forecasts/intermittent/forecasts_intermittent.rds"),
-  "probabilistic" = here("output/forecasts/probabilistic/forecasts_probabilistic.rds")
+  baseline = here(config$paths$output$forecasts, "baseline/forecasts_baseline.rds"),
+  intermittent = here(config$paths$output$forecasts, "intermittent/forecasts_intermittent.rds"),
+  probabilistic = here(config$paths$output$forecasts, "probabilistic/forecasts_probabilistic.rds"),
+  annual = here(config$paths$output$forecasts, "annual/forecasts_annual.rds")
 )
 
 arquivos_faltantes <- arquivos_necessarios[!file.exists(arquivos_necessarios)]
@@ -89,6 +90,8 @@ tic("Carregamento de forecasts")
 forecasts_baseline <- readRDS(arquivos_necessarios["baseline"])
 forecasts_intermittent <- readRDS(arquivos_necessarios["intermittent"])
 forecasts_probabilistic <- readRDS(arquivos_necessarios["probabilistic"])
+forecasts_annual <- readRDS(arquivos_necessarios["annual"]
+)
 
 toc()
 
@@ -96,6 +99,7 @@ cat("\n✅ Forecasts carregados:\n")
 cat(sprintf("   - Baseline: %d origens\n", length(forecasts_baseline)))
 cat(sprintf("   - Intermittent: %d origens\n", length(forecasts_intermittent)))
 cat(sprintf("   - Probabilistic: %d origens\n", length(forecasts_probabilistic)))
+cat(sprintf("   - Annual: %d origens\n", length(forecasts_annual)))
 
 # Validar consistência entre origens
 origens_baseline <- names(forecasts_baseline)
@@ -105,7 +109,7 @@ origens_probabilistic <- names(forecasts_probabilistic)
 if(!identical(origens_baseline, origens_intermittent) ||
    !identical(origens_baseline, origens_probabilistic)) {
   warning("Origens inconsistentes entre famílias de métodos")
-  cat("\n⚠️  ATENÇÃO: Origens inconsistentes detectadas\n")
+  cat("\n⚠️  ATENÇÃO: Origens inconsistentes detectadas (mensal)\n")
   cat("   Baseline:", paste(origens_baseline, collapse = ", "), "\n")
   cat("   Intermittent:", paste(origens_intermittent, collapse = ", "), "\n")
   cat("   Probabilistic:", paste(origens_probabilistic, collapse = ", "), "\n\n")
@@ -117,8 +121,35 @@ origens_validas <- intersect(
   intersect(origens_intermittent, origens_probabilistic)
 )
 
-cat(sprintf("\n📊 Origens para consolidação: %d\n", length(origens_validas)))
+cat(sprintf("\n📊 Origens para consolidação (mensal): %d\n", length(origens_validas)))
 cat(sprintf("   %s\n", paste(origens_validas, collapse = ", ")))
+
+# Verificar disponibilidade de forecasts anuais
+if(!is.null(forecasts_annual)) {
+  origens_annual <- names(forecasts_annual)
+  
+  # Verificar se origens anuais são consistentes com mensais
+  if(!identical(origens_validas, origens_annual)) {
+    cat("\n⚠️  Origens anuais diferem das mensais:\n")
+    cat("   Annual:", paste(origens_annual, collapse = ", "), "\n")
+    cat("   Usando apenas origens comuns para análise comparativa\n")
+    
+    origens_validas_annual <- intersect(origens_validas, origens_annual)
+  } else {
+    origens_validas_annual <- origens_annual
+  }
+  
+  cat(sprintf("\n📊 Origens para consolidação (anual): %d\n", 
+              length(origens_validas_annual)))
+  cat(sprintf("   %s\n", paste(origens_validas_annual, collapse = ", ")))
+  
+  PERSPECTIVA_ANUAL_DISPONIVEL <- TRUE
+  
+} else {
+  cat("\n⚠️  Perspectiva anual não disponível nesta consolidação\n")
+  origens_validas_annual <- character(0)
+  PERSPECTIVA_ANUAL_DISPONIVEL <- FALSE
+}
 
 # ===========================================================================
 # BLOCO 2: CARREGAMENTO DOS DADOS DE TESTE ####
@@ -303,6 +334,8 @@ cat("\n", strrep("=", 70), "\n", sep = "")
 cat("BLOCO 4: CÁLCULO DE MÉTRICAS DE ERRO - PERSPECTIVA MENSAL\n")
 cat(strrep("=", 70), "\n\n")
 
+## 4.1. CALCULAR MÉTRICAS PERSPECTIVA MENSAL ####
+
 log_message("Calculando métricas mensais", "INFO")
 
 tic("Cálculo de métricas mensais")
@@ -397,6 +430,168 @@ metricas_mensais %>%
   ) %>%
   arrange(desc(taxa_sucesso)) %>%
   print()
+
+## 4.2. CALCULAR MÉTRICAS PERSPECTIVA ANUAL NATIVA ####
+
+if(PERSPECTIVA_ANUAL_DISPONIVEL) {
+  
+  cat("\n", strrep("=", 70), "\n", sep = "")
+  cat("BLOCO 4.5: MÉTRICAS ANUAIS NATIVAS (SÉRIES AGREGADAS ANUALMENTE)\n")
+  cat(strrep("=", 70), "\n\n")
+  
+  log_message("Calculando métricas - perspectiva anual nativa", "INFO")
+  
+  tic("Cálculo de métricas anuais nativas")
+  
+  # Parâmetro LinLin
+  p_linlin <- config$parameters$metrics$linlin$p
+  
+  metricas_anuais_nativas <- map_dfr(origens_validas_annual, function(origem_nome) {
+    
+    cat(sprintf("   Processando %s...\n", origem_nome))
+    
+    fc_annual_list <- forecasts_annual[[origem_nome]]$forecasts
+    
+    # Garantir nomes nos forecasts
+    if(is.null(names(fc_annual_list))) {
+      materiais_annual <- map_chr(fc_annual_list, ~.x$cd_material)
+      names(fc_annual_list) <- materiais_annual
+    }
+    
+    map_dfr(names(fc_annual_list), function(mat) {
+      
+      fc_mat <- fc_annual_list[[mat]]
+      
+      # Valores de teste (1 ano)
+      test_values <- fc_mat$test_values
+      if(length(test_values) == 0) {
+        return(NULL)
+      }
+      test_value <- test_values[1]
+      
+      # Classificação SBC
+      sbc_class <- fc_mat$sbc_classification
+      if(is.null(sbc_class) || length(sbc_class) == 0) {
+        sbc_class <- NA_character_
+      }
+      
+      # Processar cada método
+      map_dfr(names(fc_mat$forecasts), function(metodo_nome) {
+        
+        fc <- fc_mat$forecasts[[metodo_nome]]
+        
+        # Previsão (1 ano)
+        if(length(fc$point) == 0) {
+          return(NULL)
+        }
+        previsao <- fc$point[1]
+        
+        # Calcular métricas
+        mae <- abs(test_value - previsao)
+        rmse <- sqrt((test_value - previsao)^2)
+        bias <- previsao - test_value
+        
+        # LinLin (função de perda assimétrica)
+        linlin <- if(previsao < test_value) {
+          p_linlin * abs(test_value - previsao)
+        } else {
+          (1 - p_linlin) * abs(test_value - previsao)
+        }
+        
+        # MAD/Mean
+        mad_mean <- if(test_value > 0) {
+          abs(test_value - previsao) / test_value
+        } else {
+          NA_real_
+        }
+        
+        # Tipo de erro
+        tipo_erro <- case_when(
+          previsao > test_value ~ "Superestimacao",
+          previsao < test_value ~ "Subestimacao",
+          TRUE ~ "Exato"
+        )
+        
+        tibble(
+          origem = origem_nome,
+          cd_material = mat,
+          categoria_sbc = sbc_class,
+          metodo = metodo_nome,
+          familia = categorizar_familia_metodo(metodo_nome),
+          convergence = fc$convergence,
+          
+          # Valores
+          demanda_real_anual = test_value,
+          demanda_prevista_anual = previsao,
+          
+          # Métricas
+          mae_anual_nativo = mae,
+          rmse_anual_nativo = rmse,
+          bias_anual_nativo = bias,
+          linlin_anual_nativo = linlin,
+          mad_mean_anual_nativo = mad_mean,
+          tipo_erro_anual = tipo_erro
+        )
+      })
+    })
+  })
+  
+  # Remover NULLs
+  metricas_anuais_nativas <- metricas_anuais_nativas %>%
+    filter(!is.na(cd_material))
+  
+  cat(sprintf("\n✅ Métricas anuais nativas calculadas: %s linhas\n", 
+              format(nrow(metricas_anuais_nativas), big.mark = ",")))
+  cat(sprintf("   - Materiais únicos: %s\n",
+              format(n_distinct(metricas_anuais_nativas$cd_material), big.mark = ",")))
+  cat(sprintf("   - Métodos únicos: %d\n",
+              n_distinct(metricas_anuais_nativas$metodo)))
+  
+  # Resumo estatístico
+  cat("\n📊 Resumo estatístico das métricas anuais nativas:\n\n")
+  metricas_anuais_nativas %>%
+    filter(convergence) %>%
+    select(mae_anual_nativo, rmse_anual_nativo, bias_anual_nativo, 
+           linlin_anual_nativo, mad_mean_anual_nativo) %>%
+    summary() %>%
+    print()
+  
+  # Distribuição de tipos de erro
+  cat("\n📊 Distribuição de tipos de erro (anual nativo):\n")
+  metricas_anuais_nativas %>%
+    count(tipo_erro_anual) %>%
+    mutate(prop = n / sum(n) * 100) %>%
+    arrange(desc(n)) %>%
+    print()
+  
+  # Taxa de convergência
+  cat("\n🔍 Taxa de convergência (anual nativo):\n")
+  cat(sprintf("   - Taxa global: %.1f%%\n",
+              mean(metricas_anuais_nativas$convergence) * 100))
+  
+  toc()
+  
+} else {
+  
+  cat("\n⚠️  BLOCO 4.2 IGNORADO: Forecasts anuais não disponíveis\n\n")
+  
+  metricas_anuais_nativas <- tibble(
+    origem = character(),
+    cd_material = character(),
+    categoria_sbc = character(),
+    metodo = character(),
+    familia = character(),
+    convergence = logical(),
+    demanda_real_anual = numeric(),
+    demanda_prevista_anual = numeric(),
+    mae_anual_nativo = numeric(),
+    rmse_anual_nativo = numeric(),
+    bias_anual_nativo = numeric(),
+    linlin_anual_nativo = numeric(),
+    mad_mean_anual_nativo = numeric(),
+    tipo_erro_anual = character()
+  )
+}
 
 # ===========================================================================
 # BLOCO 5: PERSPECTIVA ANUAL AGREGADA ####
@@ -539,7 +734,7 @@ resumo_por_metodo <- metricas_mensais %>%
     n_convergidas = sum(convergence),
     taxa_convergencia = n_convergidas / n_previsoes * 100,
     
-    # Métricas médias
+    # Métricas médias (perspectiva mensal)
     mae_medio = mean(mae_mensal, na.rm = TRUE),
     mae_mediano = median(mae_mensal, na.rm = TRUE),
     rmse_medio = mean(rmse_mensal, na.rm = TRUE),
@@ -553,7 +748,25 @@ resumo_por_metodo <- metricas_mensais %>%
   ) %>%
   arrange(familia, mae_medio)
 
-cat("\n📊 Top 10 métodos por MAE médio:\n")
+# Adicionar métricas anuais nativas se disponível
+if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
+  
+  resumo_anual_nativo <- metricas_anuais_nativas %>%
+    group_by(metodo, familia) %>%
+    summarise(
+      mae_anual_nativo_medio = mean(mae_anual_nativo, na.rm = TRUE),
+      rmse_anual_nativo_medio = mean(rmse_anual_nativo, na.rm = TRUE),
+      bias_anual_nativo_medio = mean(bias_anual_nativo, na.rm = TRUE),
+      .groups = 'drop'
+    )
+  
+  resumo_por_metodo <- resumo_por_metodo %>%
+    left_join(resumo_anual_nativo, by = c("metodo", "familia"))
+  
+  cat("\n✅ Resumo por método inclui métricas anuais nativas\n")
+}
+
+cat("\n📊 Top 10 métodos por MAE médio (mensal):\n")
 resumo_por_metodo %>%
   select(metodo, familia, mae_medio, taxa_convergencia) %>%
   head(10) %>%
@@ -1015,11 +1228,21 @@ tic("Salvamento de resultados")
 
 ## 7.1. Salvar objeto consolidado (RDS) ####
 
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("BLOCO 7: SALVAMENTO DE RESULTADOS\n")
+cat(strrep("=", 70), "\n\n")
+
+log_message("Salvando resultados consolidados", "INFO")
+
+tic("Salvamento de resultados")
+
+## 7.1. Salvar objeto consolidado (RDS) ####
 
 consolidado_completo <- list(
   forecasts = forecasts_consolidados,
   metricas_mensais = metricas_mensais,
   metricas_anuais = metricas_anuais,
+  metricas_anuais_nativas = metricas_anuais_nativas,  # NOVO
   resumo_por_metodo = resumo_por_metodo,
   resumo_por_sbc = resumo_por_sbc,
   analise_estratificada_f3 = analise_estratificada_f3,
@@ -1028,8 +1251,10 @@ consolidado_completo <- list(
   metadata = list(
     n_origens = length(forecasts_consolidados),
     n_materiais_total = n_distinct(metricas_mensais$cd_material),
-    n_metodos = n_distinct(metricas_mensais$metodo),
+    n_metodos_mensal = n_distinct(metricas_mensais$metodo),
+    n_metodos_anual = n_distinct(metricas_anuais_nativas$metodo),  # NOVO
     p_linlin = p_linlin,
+    perspectiva_anual_disponivel = PERSPECTIVA_ANUAL_DISPONIVEL,  # NOVO
     timestamp = Sys.time(),
     config_version = config$project$version
   )
@@ -1042,9 +1267,7 @@ saveRDS(
 
 cat("✅ Objeto consolidado salvo: forecasts_consolidated.rds\n")
 
-
 ## 7.2. Salvar métricas em Excel ####
-
 
 # Preparar sheets para Excel
 sheets_excel <- list(
@@ -1053,7 +1276,7 @@ sheets_excel <- list(
            mae_mensal, rmse_mensal, bias_mensal, linlin_mensal,
            mad_mean_ratio, per, convergence),
   
-  "Metricas_Anuais" = metricas_anuais %>%
+  "Metricas_Anuais_Agregadas" = metricas_anuais %>%
     select(origem, cd_material, categoria_sbc, metodo, familia,
            demanda_real_anual, demanda_prevista_anual,
            erro_absoluto_anual, erro_percentual_anual, 
@@ -1070,16 +1293,46 @@ sheets_excel <- list(
   "F3_Degradacao" = degradacao_f3
 )
 
+# Adicionar sheets de perspectiva anual nativa se disponível
+if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
+  sheets_excel[["Metricas_Anuais_Nativas"]] <- metricas_anuais_nativas %>%
+    select(origem, cd_material, categoria_sbc, metodo, familia,
+           demanda_real_anual, demanda_prevista_anual,
+           mae_anual_nativo, rmse_anual_nativo, bias_anual_nativo,
+           linlin_anual_nativo, mad_mean_anual_nativo,
+           tipo_erro_anual, convergence)
+  
+  # Adicionar comparação agregada vs nativa
+  comparacao_perspectivas <- metricas_anuais %>%
+    select(origem, cd_material, metodo, 
+           mae_agregado = erro_absoluto_anual) %>%
+    inner_join(
+      metricas_anuais_nativas %>%
+        select(origem, cd_material, metodo,
+               mae_nativo = mae_anual_nativo),
+      by = c("origem", "cd_material", "metodo")
+    ) %>%
+    mutate(
+      diferenca_mae = mae_nativo - mae_agregado,
+      diferenca_pct = (diferenca_mae / mae_agregado) * 100,
+      melhor_perspectiva = if_else(mae_nativo < mae_agregado,
+                                   "Nativa", "Agregada")
+    )
+  
+  sheets_excel[["Comparacao_Perspectivas"]] <- comparacao_perspectivas
+  
+  cat("✅ Sheets anuais adicionadas ao Excel\n")
+}
+
 write_xlsx(
   sheets_excel,
   here("output/reports/05_consolidated_metrics.xlsx")
 )
 
 cat("✅ Métricas em Excel: 05_consolidated_metrics.xlsx\n")
+cat(sprintf("   - Sheets incluídas: %d\n", length(sheets_excel)))
 
-
-## 7.3. Salvar tabelas em CSV (para análise em Python/outros) ####
-
+## 7.3. Salvar tabelas em CSV ####
 
 write_csv(
   metricas_mensais,
@@ -1088,7 +1341,7 @@ write_csv(
 
 write_csv(
   metricas_anuais,
-  here("output/tables/metricas_anuais.csv")
+  here("output/tables/metricas_anuais_agregadas.csv")
 )
 
 write_csv(
@@ -1096,7 +1349,16 @@ write_csv(
   here("output/tables/resumo_por_metodo.csv")
 )
 
-cat("✅ Tabelas CSV salvas em output/tables/\n")
+# Adicionar CSV de perspectiva anual nativa se disponível
+if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
+  write_csv(
+    metricas_anuais_nativas,
+    here("output/tables/metricas_anuais_nativas.csv")
+  )
+  cat("✅ Tabelas CSV salvas em output/tables/ (incluindo anuais nativas)\n")
+} else {
+  cat("✅ Tabelas CSV salvas em output/tables/\n")
+}
 
 toc()
 
@@ -1110,24 +1372,52 @@ cat(strrep("=", 70), "\n\n")
 
 cat("📋 RESUMO DA CONSOLIDAÇÃO:\n\n")
 
-cat(sprintf("✅ Origens processadas: %d\n", 
+cat(sprintf("✅ Origens processadas (mensal): %d\n", 
             consolidado_completo$metadata$n_origens))
+
+if(PERSPECTIVA_ANUAL_DISPONIVEL) {
+  cat(sprintf("✅ Origens processadas (anual nativa): %d\n", 
+              length(origens_validas_annual)))
+}
+
 cat(sprintf("📊 Total de materiais: %s\n", 
             format(consolidado_completo$metadata$n_materiais_total, 
                    big.mark = ",")))
-cat(sprintf("🔬 Total de métodos: %d\n", 
-            consolidado_completo$metadata$n_metodos))
-cat(sprintf("📈 Total de previsões: %s\n",
+cat(sprintf("🔬 Total de métodos (mensal): %d\n", 
+            consolidado_completo$metadata$n_metodos_mensal))
+
+if(PERSPECTIVA_ANUAL_DISPONIVEL) {
+  cat(sprintf("🔬 Total de métodos (anual nativo): %d\n", 
+              consolidado_completo$metadata$n_metodos_anual))
+}
+
+cat(sprintf("📈 Total de previsões (mensal): %s\n",
             format(nrow(metricas_mensais), big.mark = ",")))
 
+if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
+  cat(sprintf("📈 Total de previsões (anual nativa): %s\n",
+              format(nrow(metricas_anuais_nativas), big.mark = ",")))
+}
+
 cat("\n📁 Arquivos gerados:\n")
+cat("   CONSOLIDADO:\n")
 cat("   - output/forecasts/forecasts_consolidated.rds\n")
+cat("\n   RELATÓRIOS:\n")
 cat("   - output/reports/05_consolidated_metrics.xlsx\n")
-cat("   - output/reports/05_analise_estratificada_familia3.xlsx") 
+cat("   - output/reports/05_analise_estratificada_familia3.xlsx\n")
+cat("\n   TABELAS CSV:\n")
 cat("   - output/tables/metricas_mensais.csv\n")
-cat("   - output/tables/metricas_anuais.csv\n")
+cat("   - output/tables/metricas_anuais_agregadas.csv\n")
+
+if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
+  cat("   - output/tables/metricas_anuais_nativas.csv\n")
+}
+
 cat("   - output/tables/resumo_por_metodo.csv\n")
-#### ATEN"CÃO: INCLUIR OS NOVOS OUTPUTS GERADOS COM O 6.5 #########
+cat("\n   VISUALIZAÇÕES:\n")
+cat("   - output/figures/05_robustez_f3_heatmap_mae.png\n")
+cat("   - output/figures/05_robustez_f3_heatmap_convergencia.png\n")
+cat("   - output/figures/05_robustez_f3_degradacao_barras.png\n")
 
 cat("\n", strrep("=", 70), "\n", sep = "")
 
