@@ -3,7 +3,7 @@
 # Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Consolida forecasts das 3 famílias, calcula métricas de erro
 #            e prepara dados para análise comparativa
-# Data: 2025-12-08
+# Data: 2026-01-25
 # Versão: 2.0.0 - Incluída previsão com série anual.
 #
 # OBJETIVOS:
