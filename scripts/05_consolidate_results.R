@@ -436,7 +436,7 @@ metricas_mensais %>%
 if(PERSPECTIVA_ANUAL_DISPONIVEL) {
   
   cat("\n", strrep("=", 70), "\n", sep = "")
-  cat("BLOCO 4.5: MÉTRICAS ANUAIS NATIVAS (SÉRIES AGREGADAS ANUALMENTE)\n")
+  cat("BLOCO 4.2: MÉTRICAS ANUAIS NATIVAS (SÉRIES AGREGADAS ANUALMENTE)\n")
   cat(strrep("=", 70), "\n\n")
   
   log_message("Calculando métricas - perspectiva anual nativa", "INFO")
@@ -452,19 +452,46 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL) {
     
     fc_annual_list <- forecasts_annual[[origem_nome]]$forecasts
     
+    # VALIDAÇÃO 1: Verificar se fc_annual_list existe e não é NULL
+    if(is.null(fc_annual_list) || length(fc_annual_list) == 0) {
+      cat(sprintf("   ⚠️  %s: sem forecasts anuais, pulando...\n", origem_nome))
+      return(tibble(
+        origem = character(),
+        cd_material = character(),
+        categoria_sbc = character(),
+        metodo = character(),
+        familia = character(),
+        convergence = logical(),
+        demanda_real_anual = numeric(),
+        demanda_prevista_anual = numeric(),
+        mae_anual_nativo = numeric(),
+        rmse_anual_nativo = numeric(),
+        bias_anual_nativo = numeric(),
+        linlin_anual_nativo = numeric(),
+        mad_mean_anual_nativo = numeric(),
+        tipo_erro_anual = character()
+      ))
+    }
+    
     # Garantir nomes nos forecasts
     if(is.null(names(fc_annual_list))) {
       materiais_annual <- map_chr(fc_annual_list, ~.x$cd_material)
       names(fc_annual_list) <- materiais_annual
     }
     
-    map_dfr(names(fc_annual_list), function(mat) {
+    # Processar materiais, garantindo estrutura consistente
+    resultado_origem <- map_dfr(names(fc_annual_list), function(mat) {
       
       fc_mat <- fc_annual_list[[mat]]
       
+      # VALIDAÇÃO 2: Verificar estrutura do material
+      if(is.null(fc_mat) || is.null(fc_mat$forecasts)) {
+        return(NULL)
+      }
+      
       # Valores de teste (1 ano)
       test_values <- fc_mat$test_values
-      if(length(test_values) == 0) {
+      if(is.null(test_values) || length(test_values) == 0) {
         return(NULL)
       }
       test_value <- test_values[1]
@@ -476,15 +503,20 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL) {
       }
       
       # Processar cada método
-      map_dfr(names(fc_mat$forecasts), function(metodo_nome) {
+      resultado_material <- map_dfr(names(fc_mat$forecasts), function(metodo_nome) {
         
         fc <- fc_mat$forecasts[[metodo_nome]]
         
-        # Previsão (1 ano)
-        if(length(fc$point) == 0) {
+        # VALIDAÇÃO 3: Verificar forecast do método
+        if(is.null(fc) || is.null(fc$point) || length(fc$point) == 0) {
           return(NULL)
         }
         previsao <- fc$point[1]
+        
+        # VALIDAÇÃO 4: Verificar NAs em valores críticos
+        if(is.na(previsao) || is.na(test_value)) {
+          return(NULL)
+        }
         
         # Calcular métricas
         mae <- abs(test_value - previsao)
@@ -532,13 +564,61 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL) {
           mad_mean_anual_nativo = mad_mean,
           tipo_erro_anual = tipo_erro
         )
-      })
-    })
-  })
+      })  # Fecha map_dfr dos métodos
+      
+      # Retornar resultado do material (pode ser NULL ou tibble)
+      resultado_material
+      
+    })  # Fecha map_dfr dos materiais
+    
+    # VALIDAÇÃO 5: Garantir que retorna tibble, mesmo se vazio
+    if(is.null(resultado_origem) || nrow(resultado_origem) == 0) {
+      return(tibble(
+        origem = character(),
+        cd_material = character(),
+        categoria_sbc = character(),
+        metodo = character(),
+        familia = character(),
+        convergence = logical(),
+        demanda_real_anual = numeric(),
+        demanda_prevista_anual = numeric(),
+        mae_anual_nativo = numeric(),
+        rmse_anual_nativo = numeric(),
+        bias_anual_nativo = numeric(),
+        linlin_anual_nativo = numeric(),
+        mad_mean_anual_nativo = numeric(),
+        tipo_erro_anual = character()
+      ))
+    }
+    
+    resultado_origem
+    
+  })  # Fecha map_dfr das origens
   
-  # Remover NULLs
-  metricas_anuais_nativas <- metricas_anuais_nativas %>%
-    filter(!is.na(cd_material))
+  # VALIDAÇÃO 6: Garantir estrutura antes de filtrar
+  if(is.null(metricas_anuais_nativas) || nrow(metricas_anuais_nativas) == 0) {
+    metricas_anuais_nativas <- tibble(
+      origem = character(),
+      cd_material = character(),
+      categoria_sbc = character(),
+      metodo = character(),
+      familia = character(),
+      convergence = logical(),
+      demanda_real_anual = numeric(),
+      demanda_prevista_anual = numeric(),
+      mae_anual_nativo = numeric(),
+      rmse_anual_nativo = numeric(),
+      bias_anual_nativo = numeric(),
+      linlin_anual_nativo = numeric(),
+      mad_mean_anual_nativo = numeric(),
+      tipo_erro_anual = character()
+    )
+    cat("\n⚠️  Nenhuma métrica anual nativa calculada.\n")
+  } else {
+    # Remover linhas com cd_material NA (se houver)
+    metricas_anuais_nativas <- metricas_anuais_nativas %>%
+      filter(!is.na(cd_material))
+  }
   
   cat(sprintf("\n✅ Métricas anuais nativas calculadas: %s linhas\n", 
               format(nrow(metricas_anuais_nativas), big.mark = ",")))
@@ -688,7 +768,6 @@ cat(sprintf("   - Total de linhas: %s\n",
 cat("   - Métricas: MAE, RMSE, Bias, LinLin, MAD/Mean (perspectiva anual)\n")
 
 ## 5.3. Resumo estatístico das métricas anuais ####
-
 
 cat("\n📊 5.3. Resumo estatístico das métricas anuais:\n\n")
 
@@ -977,9 +1056,7 @@ if(nrow(benchmarks_por_categoria) == 0) {
   print(resumo_competitividade)
 }
 
-
 ## 6.5.4. Visualização: Heatmap de Performance ####
-
 
 cat("\n📊 Gerando visualizações...\n")
 
