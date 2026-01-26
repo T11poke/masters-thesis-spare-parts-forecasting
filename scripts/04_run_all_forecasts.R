@@ -196,7 +196,6 @@ cat("   - output/checkpoints/*.rds\n")
 cat("   - output/reports/04*/*.xlsx\n")
 
 cat("\n✅ Próximo passo: Executar script 05_consolidate_results.R\n")
-cat("   (O script 05 precisará ser atualizado para incluir dados anuais)\n")
 
 cat("\n", strrep("=", 70), "\n", sep = "")
 cat(sprintf("Início:  %s\n", format(inicio_geral, "%Y-%m-%d %H:%M:%S")))
