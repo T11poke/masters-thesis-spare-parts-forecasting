@@ -66,6 +66,10 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
         -   Implementa métodos probabilísticos (Poisson, Gamma) e agregação temporal (ADIDA)
 
+    -   04d_annual_forecasts.R
+
+        -   Agrega os dados em observações anuais e implementa a previsão com através dos métodos estudados.
+
 05_consolidate_results.R
 
 -   Consolida forecasts das 3 famílias, calcula métricas de erro e prepara dados para análise comparativa
@@ -182,5 +186,5 @@ santosdiaslasdr
 ------------------------------------------------------------------------
 
 **Status**: 🚧 Em desenvolvimento\
-**Última atualização**: 2025-12-09\
+**Última atualização**: 2026-01-25\
 **Versão**: 2.1.1
