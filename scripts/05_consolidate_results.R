@@ -840,6 +840,7 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
     )
   
   resumo_por_metodo <- resumo_por_metodo %>%
+    mutate(metodo = tolower(metodo)) %>%
     left_join(resumo_anual_nativo, by = c("metodo", "familia"))
   
   cat("\n✅ Resumo por método inclui métricas anuais nativas\n")
