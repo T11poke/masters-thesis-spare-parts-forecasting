@@ -631,7 +631,7 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL) {
   cat("\n📊 Resumo estatístico das métricas anuais nativas:\n\n")
   metricas_anuais_nativas %>%
     filter(convergence) %>%
-    select(mae_anual_nativo, rmse_anual_nativo, bias_anual_nativo, 
+    dplyr::select(mae_anual_nativo, rmse_anual_nativo, bias_anual_nativo, 
            linlin_anual_nativo, mad_mean_anual_nativo) %>%
     summary() %>%
     print()
@@ -773,7 +773,7 @@ cat("\n📊 5.3. Resumo estatístico das métricas anuais:\n\n")
 
 metricas_anuais %>%
   filter(convergence) %>%
-  select(mae_anual, rmse_anual, bias_anual, linlin_anual, mad_mean_anual) %>%
+  dplyr::select(mae_anual, rmse_anual, bias_anual, linlin_anual, mad_mean_anual) %>%
   summary() %>%
   print()
 
@@ -847,7 +847,7 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
 
 cat("\n📊 Top 10 métodos por MAE médio (mensal):\n")
 resumo_por_metodo %>%
-  select(metodo, familia, mae_medio, taxa_convergencia) %>%
+  dplyr::select(metodo, familia, mae_medio, taxa_convergencia) %>%
   head(10) %>%
   print()
 
@@ -867,7 +867,7 @@ cat("\n📊 Desempenho por categoria SBC (amostra):\n")
 resumo_por_sbc %>%
   group_by(categoria_sbc) %>%
   slice_min(mae_medio, n = 2) %>%
-  select(categoria_sbc, metodo, mae_medio) %>%
+  dplyr::select(categoria_sbc, metodo, mae_medio) %>%
   print()
 # ===========================================================================
 # BLOCO 6.5: ANÁLISE ESTRATIFICADA - FAMÍLIA 3 (ROBUSTEZ CROSS-CATEGORY) ####
@@ -943,7 +943,7 @@ degradacao_f3 <- analise_robustez_f3 %>%
       TRUE ~ "Degradação Severa (>50%)"
     )
   ) %>%
-  select(
+  dplyr::select(
     metodo, categoria_sbc, 
     dominio_nativo, classificacao,
     n_materiais, taxa_convergencia,
@@ -1027,7 +1027,7 @@ if(nrow(benchmarks_por_categoria) == 0) {
         TRUE ~ "Inferior a ambos"
       )
     ) %>%
-    select(
+    dplyr::select(
       metodo, categoria_sbc,
       mae_mediano, benchmark_Naive, benchmark_Mean,
       vantagem_vs_naive_pct, vantagem_vs_mean_pct,
@@ -1349,12 +1349,12 @@ cat("✅ Objeto consolidado salvo: forecasts_consolidated.rds\n")
 # Preparar sheets para Excel
 sheets_excel <- list(
   "Metricas_Mensais" = metricas_mensais %>%
-    select(origem, cd_material, categoria_sbc, metodo, familia,
+    dplyr::select(origem, cd_material, categoria_sbc, metodo, familia,
            mae_mensal, rmse_mensal, bias_mensal, linlin_mensal,
            mad_mean_ratio, per, convergence),
   
   "Metricas_Anuais_Agregadas" = metricas_anuais %>%
-    select(origem, cd_material, categoria_sbc, metodo, familia,
+    dplyr::select(origem, cd_material, categoria_sbc, metodo, familia,
            demanda_real_anual, demanda_prevista_anual,
            erro_absoluto_anual, erro_percentual_anual, 
            tipo_erro_anual, convergence),
@@ -1373,7 +1373,7 @@ sheets_excel <- list(
 # Adicionar sheets de perspectiva anual nativa se disponível
 if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
   sheets_excel[["Metricas_Anuais_Nativas"]] <- metricas_anuais_nativas %>%
-    select(origem, cd_material, categoria_sbc, metodo, familia,
+    dplyr::select(origem, cd_material, categoria_sbc, metodo, familia,
            demanda_real_anual, demanda_prevista_anual,
            mae_anual_nativo, rmse_anual_nativo, bias_anual_nativo,
            linlin_anual_nativo, mad_mean_anual_nativo,
@@ -1381,7 +1381,7 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
   
   # Adicionar comparação agregada vs nativa
   comparacao_perspectivas <- metricas_anuais %>%
-    select(origem, cd_material, metodo, 
+    dplyr::select(origem, cd_material, metodo, 
            mae_agregado = erro_absoluto_anual) %>%
     inner_join(
       metricas_anuais_nativas %>%
