@@ -834,8 +834,10 @@ if(PERSPECTIVA_ANUAL_DISPONIVEL && nrow(metricas_anuais_nativas) > 0) {
     group_by(metodo, familia) %>%
     summarise(
       mae_anual_nativo_medio = mean(mae_anual_nativo, na.rm = TRUE),
+      mae_anual_nativo_mediano = median(mae_anual_nativo, na.rm = TRUE),
       rmse_anual_nativo_medio = mean(rmse_anual_nativo, na.rm = TRUE),
       bias_anual_nativo_medio = mean(bias_anual_nativo, na.rm = TRUE),
+      linlin_anual_nativo_medio = mean(linlin_anual_nativo, na.rm = TRUE),
       .groups = 'drop'
     )
   
