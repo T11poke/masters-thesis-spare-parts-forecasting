@@ -1,5 +1,6 @@
 # 08 - VISUALIZAÇÃO DE SÉRIES TEMPORAIS COM PREVISÕES ####
 #
+# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Visualização de séries temporais incluindo valores previstos 
 #            e valores reais observados no período de teste, com amostras
 #            representativas de cada categoria SBC
@@ -56,9 +57,9 @@ log_message("Carregando dados processados", "INFO")
 # Carregar splits (treino/teste)
 splits_list <- readRDS(here(config$paths$data$processed, "train_test_splits.rds"))
 
-# Carregar forecasts mensais consolidados
-forecasts_mensais <- readRDS(here(config$paths$output$forecasts, 
-                                  "consolidated_forecasts.rds"))
+# Carregar forecasts consolidados
+forecasts_consolidados <- readRDS(here(config$paths$output$forecasts, 
+                                       "forecasts_consolidated.rds"))
 
 # Carregar forecasts anuais
 forecasts_anuais <- readRDS(here(config$paths$output$forecasts, 
@@ -67,7 +68,7 @@ forecasts_anuais <- readRDS(here(config$paths$output$forecasts,
 cat("✅ Dados carregados:\n")
 cat(sprintf("   - Origens temporais: %d\n", length(splits_list)))
 cat(sprintf("   - Forecasts mensais: %d origens\n", 
-            length(forecasts_mensais$monthly_perspective)))
+            length(forecasts_consolidados$forecasts)))
 cat(sprintf("   - Forecasts anuais: %d origens\n", 
             length(forecasts_anuais)))
 
@@ -226,59 +227,71 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
     as_tibble()
   
   # Obter forecasts para este material
-  forecasts_origem <- forecasts_mensais$monthly_perspective[[origem_nome]]
+  # Estrutura: forecasts_consolidados$forecasts$origem_X$forecasts$CD_MATERIAL
+  forecasts_origem <- forecasts_consolidados$forecasts[[origem_nome]]
   
-  # Encontrar forecast do material
-  mat_forecast <- forecasts_origem %>%
-    filter(cd_material == cd_mat)
-  
-  if (nrow(mat_forecast) == 0) {
+  if (is.null(forecasts_origem$forecasts[[cd_mat]])) {
     warning(sprintf("Material %s não encontrado nos forecasts", cd_mat))
     return(NULL)
   }
   
+  mat_forecast <- forecasts_origem$forecasts[[cd_mat]]
+  
+  # Valores reais do teste (já estão no objeto)
+  valores_reais_teste <- mat_forecast$valores_reais
+  
+  # Criar tibble com valores reais do teste
+  test_valores <- tibble(
+    data_competencia = seq(
+      max(train$data_competencia) %m+% months(1),
+      by = "month",
+      length.out = length(valores_reais_teste)
+    ),
+    qt_total = valores_reais_teste
+  )
+  
   # Preparar dados de forecasts para plotagem
-  # A estrutura pode variar, adaptar conforme necessário
   forecast_data <- tibble()
   
-  # Tentar extrair forecasts de diferentes métodos
-  if (!is.null(metodos_plotar)) {
-    metodos_disponiveis <- intersect(metodos_plotar, names(mat_forecast))
-  } else {
-    # Usar métodos principais por padrão
-    metodos_principais <- c("SBA", "Croston", "TSB", "SES", "Naive")
-    metodos_disponiveis <- intersect(metodos_principais, names(mat_forecast))
+  # Definir métodos a plotar
+  if (is.null(metodos_plotar)) {
+    metodos_plotar <- c("sba", "croston", "tsb", "ses", "naive")
   }
   
-  for (metodo in metodos_disponiveis) {
-    if (metodo %in% names(mat_forecast)) {
-      # Assumindo que previsões estão em coluna 'point'
-      # e datas em 'data_competencia' ou similar
+  # Converter para lowercase para match
+  metodos_plotar <- tolower(metodos_plotar)
+  
+  # Métodos disponíveis nos forecasts
+  metodos_disponiveis <- names(mat_forecast$forecasts)
+  metodos_usar <- intersect(metodos_plotar, metodos_disponiveis)
+  
+  for (metodo in metodos_usar) {
+    metodo_data <- mat_forecast$forecasts[[metodo]]
+    
+    if (!is.null(metodo_data$point)) {
+      n_forecast <- length(metodo_data$point)
       
-      # Adaptar conforme estrutura real dos dados
-      metodo_data <- mat_forecast[[metodo]]
+      forecast_df <- tibble(
+        data_competencia = seq(
+          max(train$data_competencia) %m+% months(1),
+          by = "month",
+          length.out = n_forecast
+        ),
+        valor_previsto = metodo_data$point,
+        metodo = toupper(metodo)  # Nome em maiúscula para label
+      )
       
-      if (is.list(metodo_data) && "point" %in% names(metodo_data)) {
-        n_forecast <- length(metodo_data$point)
-        
-        forecast_df <- tibble(
-          data_competencia = seq(
-            max(train$data_competencia) %m+% months(1),
-            by = "month",
-            length.out = n_forecast
-          ),
-          valor_previsto = metodo_data$point,
-          metodo = metodo
-        )
-        
-        forecast_data <- bind_rows(forecast_data, forecast_df)
-      }
+      forecast_data <- bind_rows(forecast_data, forecast_df)
     }
   }
   
   # Obter informações SBC
   info_sbc <- split_origem$sbc_classification %>%
     filter(cd_material == cd_mat)
+  
+  if (nrow(info_sbc) == 0) {
+    info_sbc <- tibble(adi = NA, cv2 = NA)
+  }
   
   # Criar gráfico
   p <- ggplot() +
@@ -299,13 +312,13 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
     ) +
     # Valores reais no teste
     geom_line(
-      data = test,
+      data = test_valores,
       aes(x = data_competencia, y = qt_total),
       color = "darkred",
       linewidth = 0.8
     ) +
     geom_point(
-      data = test %>% filter(qt_total > 0),
+      data = test_valores %>% filter(qt_total > 0),
       aes(x = data_competencia, y = qt_total),
       color = "darkred",
       size = 2.5
@@ -334,8 +347,8 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
       subtitle = sprintf(
         "%s | ADI: %.2f | CV²: %.2f | Horizonte: 12 meses",
         origem_nome,
-        info_sbc$adi,
-        info_sbc$cv2
+        info_sbc$adi[1],
+        info_sbc$cv2[1]
       ),
       x = "Período",
       y = "Quantidade Demandada",
@@ -356,8 +369,8 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
 # Gerar gráficos para materiais selecionados
 cat("📊 Gerando gráficos individuais...\n")
 
-# Métodos a plotar (selecionar principais)
-metodos_principais <- c("SBA", "Croston", "TSB", "SES", "Naive")
+# Métodos a plotar (nomes em lowercase conforme estrutura de dados)
+metodos_principais <- c("sba", "croston", "tsb", "ses", "naive")
 
 plots_mensais <- list()
 
@@ -451,7 +464,7 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
     group_by(ano) %>%
     summarise(qt_anual = sum(qt_total, na.rm = TRUE), .groups = 'drop')
   
-  # Agregar teste em anos
+  # Agregar teste em anos (do objeto test de splits)
   test_anual <- split_origem$test %>%
     filter(cd_material == cd_mat) %>%
     as_tibble() %>%
@@ -462,11 +475,10 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
   # Obter forecasts anuais
   forecasts_origem_anual <- forecasts_anuais[[origem_nome]]
   
-  # Encontrar forecast do material
+  # Encontrar forecast do material na lista
   mat_forecast <- NULL
   
   if (!is.null(forecasts_origem_anual$forecasts)) {
-    # Procurar material nos forecasts
     for (forecast_item in forecasts_origem_anual$forecasts) {
       if (!is.null(forecast_item$cd_material) && 
           forecast_item$cd_material == cd_mat) {
@@ -484,20 +496,20 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
   # Preparar dados de forecasts
   forecast_data <- tibble()
   
-  metodos_anuais <- c("SBA", "Croston", "TSB", "SES", "Naive")
+  metodos_anuais <- c("sba", "croston", "tsb", "ses", "naive")
   metodos_disponiveis <- intersect(metodos_anuais, names(mat_forecast$forecasts))
+  
+  # Ano da previsão (ano seguinte ao último do treino)
+  ano_forecast <- max(train_anual$ano) + 1
   
   for (metodo in metodos_disponiveis) {
     metodo_data <- mat_forecast$forecasts[[metodo]]
     
-    if (!is.null(metodo_data$point)) {
-      # Horizonte = 1 ano
-      ano_forecast <- max(train_anual$ano) + 1
-      
+    if (!is.null(metodo_data$point) && metodo_data$convergence) {
       forecast_df <- tibble(
         ano = ano_forecast,
         valor_previsto = metodo_data$point[1],  # Apenas 1 ano à frente
-        metodo = metodo
+        metodo = toupper(metodo)
       )
       
       forecast_data <- bind_rows(forecast_data, forecast_df)
@@ -507,6 +519,10 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
   # Obter info SBC
   info_sbc <- split_origem$sbc_classification %>%
     filter(cd_material == cd_mat)
+  
+  if (nrow(info_sbc) == 0) {
+    info_sbc <- tibble(adi = NA, cv2 = NA)
+  }
   
   # Criar gráfico
   p <- ggplot() +
@@ -554,8 +570,8 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
       subtitle = sprintf(
         "%s | ADI: %.2f | CV²: %.2f | Horizonte: 1 ano",
         origem_nome,
-        info_sbc$adi,
-        info_sbc$cv2
+        info_sbc$adi[1],
+        info_sbc$cv2[1]
       ),
       x = "Ano",
       y = "Quantidade Anual Demandada",
