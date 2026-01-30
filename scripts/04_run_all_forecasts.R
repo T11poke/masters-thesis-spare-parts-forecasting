@@ -1,6 +1,5 @@
 # 04 - ORQUESTRADOR: EXECUTAR TODOS OS FORECASTS ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Executa sequencialmente os três pipelines de forecasting
 # Data: 2026-01-22
 # Versão: 2.0.1

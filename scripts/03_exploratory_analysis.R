@@ -1,6 +1,5 @@
 # 03 - ANÁLISE EXPLORATÓRIA DOS DADOS ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Caracterização dos padrões de demanda segundo taxonomia SBC,
 #            análise descritiva por categoria, subsistema e temporal
 # Data: 2025-12-04

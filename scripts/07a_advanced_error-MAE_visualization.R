@@ -1,6 +1,5 @@
 # 07 - VISUALIZAÇÕES AVANÇADAS DE RESULTADOS ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Geração de visualizações avançadas para análise de resultados
 #            e figuras de alta qualidade para dissertação
 # Data: 2025-12-10

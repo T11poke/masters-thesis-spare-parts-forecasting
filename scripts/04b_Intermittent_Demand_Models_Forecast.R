@@ -1,6 +1,5 @@
 # 04b - PREVISÃO: MODELOS ESPECIALIZADOS EM DEMANDA INTERMITENTE ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Implementação de métodos especializados para demanda intermitente
 #            com otimização de hiperparâmetros (Família 3)
 # Data: 2025-12-08

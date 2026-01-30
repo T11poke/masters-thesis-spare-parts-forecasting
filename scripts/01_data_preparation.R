@@ -1,6 +1,5 @@
 # 01 - PREPARAÇÃO DOS DADOS - TRATAMENTO DE SKUs ALTERNADOS ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Este código agrupa SKUs alternados (mesmo PN) como um único
 #            item de consumo para análise de previsão de demanda
 # Data: 2025-08-12

@@ -1,6 +1,5 @@
 # 05 - CONSOLIDAÇÃO DE RESULTADOS ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Consolida forecasts das 3 famílias, calcula métricas de erro
 #            e prepara dados para análise comparativa
 # Data: 2026-01-25

@@ -1,6 +1,5 @@
 # 04d - FORECASTING: MODELOS COM DADOS AGREGADOS ANUALMENTE ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Implementa treinamento de modelos com séries temporais agregadas
 #            anualmente para comparação com abordagem mensal + agregação
 # Data: 2025-01-22

@@ -1,6 +1,5 @@
 # 07b - ANÁLISE MULTI-MÉTRICA E SENSIBILIDADE ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Análise comparativa usando TODAS as métricas implementadas
 #            Verifica consistência de rankings e identifica trade-offs
 # Data: 2025-12-10

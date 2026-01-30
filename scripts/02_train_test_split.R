@@ -1,6 +1,5 @@
 # 02 - DIVISÃO TEMPORAL DOS DADOS - TRAIN/TEST SPLIT ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Implementa estratégia de validação rolling origin com janela
 #            expansiva, classificação SBC por origem e validações de integridade
 # Data: 2025-12-03

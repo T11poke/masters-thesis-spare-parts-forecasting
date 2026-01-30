@@ -1,6 +1,5 @@
 # 04a - PREVISÃO: MODELOS BASELINE ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Implementação de métodos clássicos e de suavização exponencial
 #            para previsão de demanda intermitente (Famílias 1 e 2)
 # Data: 2025-12-05

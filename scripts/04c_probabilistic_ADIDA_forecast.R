@@ -1,6 +1,5 @@
 # 04c - FORECASTING: MODELOS PROBABILÍSTICOS E ADIDA ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Implementa métodos probabilísticos (Poisson, Gamma) e
 #            agregação temporal (ADIDA)
 # Data: 2025-12-08
