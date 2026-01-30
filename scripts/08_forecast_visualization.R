@@ -4,7 +4,7 @@
 # Descrição: Visualização de séries temporais incluindo valores previstos 
 #            e valores reais observados no período de teste, com amostras
 #            representativas de cada categoria SBC
-# Data: 2026-01-28
+# Data: 2026-01-29
 # Versão: 1.0.0
 #
 
@@ -19,10 +19,19 @@ library(ggsci)
 library(ggthemes)
 library(scales)
 library(patchwork)
+library(parallel)
+library(future)
+
 
 source(here("R/utils/load_config.R"))
 
 set.seed(config$parameters$seed)
+
+if(config$computation$parallel) {
+  plan(multisession, workers = config$computation$n_cores)
+  log_message(sprintf("Paralelização ativada: %d cores", 
+                      config$computation$n_cores), "INFO")
+}
 
 log_message("========================================", "INFO")
 log_message("INICIANDO VISUALIZAÇÃO DE FORECASTS", "INFO")
@@ -71,6 +80,119 @@ cat(sprintf("   - Forecasts mensais: %d origens\n",
             length(forecasts_consolidados$forecasts)))
 cat(sprintf("   - Forecasts anuais: %d origens\n", 
             length(forecasts_anuais)))
+
+## 1.1. padronizar os nomes dos métodos nos datasets ####
+
+
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("PADRONIZANDO FORECASTS MENSAIS\n")
+cat(strrep("=", 70), "\n\n")
+
+log_message("Iniciando padronização dos forecasts mensais", "INFO")
+
+n_origens <- length(forecasts_consolidados$forecasts)
+n_materiais_total <- 0
+n_renomeacoes <- 0
+
+cat(sprintf("📊 Processando %d origens...\n\n", n_origens))
+
+for (origem_nome in names(forecasts_consolidados$forecasts)) {
+  
+  cat(sprintf("   Origem: %s\n", origem_nome))
+  
+  origem_data <- forecasts_consolidados$forecasts[[origem_nome]]
+  n_materiais <- length(origem_data$forecasts)
+  n_materiais_total <- n_materiais_total + n_materiais
+  
+  cat(sprintf("      Materiais: %d\n", n_materiais))
+  
+  # Processar cada material
+  for (cd_material in names(origem_data$forecasts)) {
+    
+    mat_forecast <- origem_data$forecasts[[cd_material]]
+    
+    # Verificar se tem forecasts
+    if (!is.null(mat_forecast$forecasts) && length(mat_forecast$forecasts) > 0) {
+      
+      nomes_originais <- names(mat_forecast$forecasts)
+      nomes_novos <- tolower(nomes_originais)
+      
+      # Contar renomeações
+      n_diferentes <- sum(nomes_originais != nomes_novos)
+      if (n_diferentes > 0) {
+        n_renomeacoes <- n_renomeacoes + n_diferentes
+      }
+      
+      # Renomear
+      names(mat_forecast$forecasts) <- nomes_novos
+      
+      # Atualizar no objeto original
+      forecasts_consolidados$forecasts[[origem_nome]]$forecasts[[cd_material]] <- mat_forecast
+    }
+  }
+  
+  cat(sprintf("      ✅ Concluído\n"))
+}
+
+cat(sprintf("\n✅ Total de métodos renomeados: %s\n", 
+            format(n_renomeacoes, big.mark = ",")))
+cat(sprintf("✅ Total de materiais processados: %s\n", 
+            format(n_materiais_total, big.mark = ",")))
+
+cat("\n", strrep("=", 70), "\n", sep = "")
+cat("PADRONIZANDO FORECASTS ANUAIS\n")
+cat(strrep("=", 70), "\n\n")
+
+log_message("Iniciando padronização dos forecasts anuais", "INFO")
+
+n_origens_anual <- length(forecasts_anuais)
+n_materiais_anual_total <- 0
+n_renomeacoes_anual <- 0
+
+cat(sprintf("📊 Processando %d origens...\n\n", n_origens_anual))
+
+for (origem_nome in names(forecasts_anuais)) {
+  
+  cat(sprintf("   Origem: %s\n", origem_nome))
+  
+  origem_data_anual <- forecasts_anuais[[origem_nome]]
+  n_materiais_anual <- length(origem_data_anual$forecasts)
+  n_materiais_anual_total <- n_materiais_anual_total + n_materiais_anual
+  
+  cat(sprintf("      Materiais: %d\n", n_materiais_anual))
+  
+  # Processar cada material
+  for (i in seq_along(origem_data_anual$forecasts)) {
+    
+    mat_forecast_anual <- origem_data_anual$forecasts[[i]]
+    
+    # Verificar se tem forecasts
+    if (!is.null(mat_forecast_anual$forecasts) && length(mat_forecast_anual$forecasts) > 0) {
+      
+      nomes_originais <- names(mat_forecast_anual$forecasts)
+      nomes_novos <- tolower(nomes_originais)
+      
+      # Contar renomeações
+      n_diferentes <- sum(nomes_originais != nomes_novos)
+      if (n_diferentes > 0) {
+        n_renomeacoes_anual <- n_renomeacoes_anual + n_diferentes
+      }
+      
+      # Renomear
+      names(mat_forecast_anual$forecasts) <- nomes_novos
+      
+      # Atualizar no objeto original
+      forecasts_anuais[[origem_nome]]$forecasts[[i]] <- mat_forecast_anual
+    }
+  }
+  
+  cat(sprintf("      ✅ Concluído\n"))
+}
+
+cat(sprintf("\n✅ Total de métodos renomeados: %s\n", 
+            format(n_renomeacoes_anual, big.mark = ",")))
+cat(sprintf("✅ Total de materiais processados: %s\n", 
+            format(n_materiais_anual_total, big.mark = ",")))
 
 # =============================================================================
 # BLOCO 2: SELEÇÃO DE MATERIAIS EXEMPLO ####
@@ -178,8 +300,8 @@ materiais_exemplo <- tibble(categoria = categorias_principais) %>%
       categoria,
       ~selecionar_materiais_exemplo(
         sbc_ref, train_ref, .x, 
-        n_amostras = 3, 
-        criterio = "diversificado"
+        n_amostras = 2, 
+        criterio = "mediano"
       )
     )
   ) %>%
@@ -265,23 +387,40 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
   metodos_disponiveis <- names(mat_forecast$forecasts)
   metodos_usar <- intersect(metodos_plotar, metodos_disponiveis)
   
+  if (length(metodos_usar) == 0) {
+    warning(sprintf("Material %s: nenhum método disponível para plotar", cd_mat))
+  }
+  
   for (metodo in metodos_usar) {
     metodo_data <- mat_forecast$forecasts[[metodo]]
     
-    if (!is.null(metodo_data$point)) {
-      n_forecast <- length(metodo_data$point)
+    # Validar estrutura do método
+    if (!is.null(metodo_data) && !is.null(metodo_data$point)) {
       
-      forecast_df <- tibble(
-        data_competencia = seq(
-          max(train$data_competencia) %m+% months(1),
-          by = "month",
-          length.out = n_forecast
-        ),
-        valor_previsto = metodo_data$point,
-        metodo = toupper(metodo)  # Nome em maiúscula para label
-      )
+      # Verificar convergência se disponível
+      convergiu <- TRUE
+      if (!is.null(metodo_data$convergence)) {
+        convergiu <- metodo_data$convergence
+      }
       
-      forecast_data <- bind_rows(forecast_data, forecast_df)
+      if (convergiu) {
+        n_forecast <- length(metodo_data$point)
+        
+        # Validar que temos valores
+        if (n_forecast > 0) {
+          forecast_df <- tibble(
+            data_competencia = seq(
+              max(train$data_competencia) %m+% months(1),
+              by = "month",
+              length.out = n_forecast
+            ),
+            valor_previsto = metodo_data$point,
+            metodo = toupper(metodo)  # Nome em maiúscula para label
+          )
+          
+          forecast_data <- bind_rows(forecast_data, forecast_df)
+        }
+      }
     }
   }
   
@@ -293,7 +432,24 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
     info_sbc <- tibble(adi = NA, cv2 = NA)
   }
   
-  # Criar gráfico
+  # Avisar se não há forecasts para plotar
+  if (nrow(forecast_data) == 0) {
+    warning(sprintf("Material %s: nenhum forecast convergiu - plotando apenas valores reais", 
+                    cd_mat))
+  }
+  
+  # Validar dados antes de plotar
+  if (nrow(train) == 0) {
+    warning(sprintf("Material %s sem dados de treino", cd_mat))
+    return(NULL)
+  }
+  
+  if (nrow(test_valores) == 0) {
+    warning(sprintf("Material %s sem dados de teste", cd_mat))
+    return(NULL)
+  }
+  
+  # Criar gráfico base
   p <- ggplot() +
     # Série histórica (treino)
     geom_line(
@@ -323,42 +479,55 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
       color = "darkred",
       size = 2.5
     ) +
-    # Previsões
-    geom_line(
-      data = forecast_data,
-      aes(x = data_competencia, y = valor_previsto, 
-          color = metodo, linetype = metodo),
-      linewidth = 0.7
-    ) +
     # Linha vertical separando treino/teste
     geom_vline(
       xintercept = as.numeric(max(train$data_competencia)),
       linetype = "dashed",
       color = "gray30",
       linewidth = 0.5
-    ) +
-    # Escalas e labels
-    scale_color_nejm() +
-    scale_linetype_manual(
-      values = c("solid", "dashed", "dotted", "dotdash", "longdash")
-    ) +
+    )
+  
+  # Adicionar previsões apenas se houver dados
+  if (nrow(forecast_data) > 0) {
+    p <- p +
+      geom_line(
+        data = forecast_data,
+        aes(x = data_competencia, y = valor_previsto, 
+            color = metodo, linetype = metodo),
+        linewidth = 0.7
+      ) +
+      scale_color_nejm() +
+      scale_linetype_manual(
+        values = c("twodash", "dashed", "dotted", "dotdash", "longdash")
+      )
+  }
+  
+  # Adicionar labels
+  p <- p +
     labs(
-      title = sprintf("Categoria: %s | Material: %s", categoria, cd_mat),
+      # title = sprintf("Categoria: %s | Material: %s", categoria, cd_mat),
+      title = sprintf("Material: %s", cd_mat),
+      
+      # subtitle = sprintf(
+      #   "%s | ADI: %.2f | CV²: %.2f | Horizonte: 12 meses",
+      #   origem_nome,
+      #   info_sbc$adi[1],
+      #   info_sbc$cv2[1]
+      # ),
       subtitle = sprintf(
-        "%s | ADI: %.2f | CV²: %.2f | Horizonte: 12 meses",
-        origem_nome,
+        "ADI: %.2f | CV²: %.2f",
         info_sbc$adi[1],
         info_sbc$cv2[1]
       ),
       x = "Período",
       y = "Quantidade Demandada",
-      color = "Método",
-      linetype = "Método"
+      color = "Modelo",
+      linetype = "Modelo"
     ) +
     theme_tufte() +
     theme(
       plot.subtitle = element_text(color = "gray40", size = 9),
-      legend.position = "bottom",
+      legend.position = "right",
       legend.title = element_text(size = 9),
       legend.text = element_text(size = 8)
     )
@@ -367,10 +536,10 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
 }
 
 # Gerar gráficos para materiais selecionados
-cat("📊 Gerando gráficos individuais...\n")
+cat("📊 Gerando gráficos individuais...\n\n")
 
 # Métodos a plotar (nomes em lowercase conforme estrutura de dados)
-metodos_principais <- c("sba", "croston", "tsb", "ses", "naive")
+metodos_principais <- c("sba", "adida_k3_mean", "croston", "poisson", "naive")
 
 plots_mensais <- list()
 
@@ -378,26 +547,40 @@ for (i in 1:nrow(materiais_exemplo)) {
   
   mat_info <- materiais_exemplo[i, ]
   
-  cat(sprintf("   - Plotando %s (%s)...\n", 
+  cat(sprintf("   [%d/%d] Plotando %s (%s)...\n", 
+              i, nrow(materiais_exemplo),
               mat_info$cd_material, 
               mat_info$categoria))
   
-  p <- plot_forecast_mensal(
-    cd_mat = mat_info$cd_material,
-    origem_nome = origem_recente,
-    categoria = mat_info$categoria,
-    metodos_plotar = metodos_principais
-  )
-  
-  if (!is.null(p)) {
-    plots_mensais[[i]] <- p
-  }
+  tryCatch({
+    p <- plot_forecast_mensal(
+      cd_mat = mat_info$cd_material,
+      origem_nome = origem_recente,
+      categoria = mat_info$categoria,
+      metodos_plotar = metodos_principais
+    )
+    
+    if (!is.null(p)) {
+      plots_mensais[[i]] <- p
+      cat(sprintf("        ✅ OK\n"))
+    } else {
+      cat(sprintf("        ⚠️  Retornou NULL\n"))
+    }
+    
+  }, error = function(e) {
+    cat(sprintf("        ❌ ERRO: %s\n", conditionMessage(e)))
+    plots_mensais[[i]] <- NULL
+  })
 }
 
 # Criar painéis por categoria
-cat("\n📊 Criando painéis por categoria...\n")
+cat("\n📊 Criando painéis por categoria...\n\n")
+
+n_graficos_salvos <- 0
 
 for (cat_atual in categorias_principais) {
+  
+  cat(sprintf("   Categoria: %s\n", cat_atual))
   
   indices_categoria <- which(materiais_exemplo$categoria == cat_atual)
   
@@ -406,17 +589,19 @@ for (cat_atual in categorias_principais) {
     plots_categoria <- plots_mensais[indices_categoria]
     plots_categoria <- plots_categoria[!sapply(plots_categoria, is.null)]
     
+    cat(sprintf("      - Gráficos válidos: %d de %d\n", 
+                length(plots_categoria), length(indices_categoria)))
+    
     if (length(plots_categoria) > 0) {
       
       painel <- wrap_plots(plots_categoria, ncol = 1) +
         plot_annotation(
-          title = sprintf(
-            "Previsões Mensais - Categoria %s (h=12 meses)",
-            cat_atual
-          ),
+          # title = sprintf(
+          #   "Categoria %s",
+          #   cat_atual
+          # ),
           subtitle = sprintf(
-            "Linha azul: histórico (treino) | Linha vermelha: real (teste) | Linhas coloridas: previsões (%s)",
-            origem_recente
+            "Linha azul: histórico | Linha vermelha: observado | Linhas coloridas: previsto"
           ),
           theme = theme(
             plot.title = element_text(face = "bold", size = 16),
@@ -435,10 +620,20 @@ for (cat_atual in categorias_principais) {
         dpi = 300
       )
       
-      cat(sprintf("   ✅ Salvo: %s\n", filename))
+      cat(sprintf("      ✅ Salvo: %s\n", filename))
+      n_graficos_salvos <- n_graficos_salvos + 1
+    } else {
+      cat(sprintf("      ⚠️  Nenhum gráfico válido - arquivo não criado\n"))
     }
+  } else {
+    cat(sprintf("      ⚠️  Nenhum material nesta categoria\n"))
   }
+  
+  cat("\n")
 }
+
+cat(sprintf("📊 Total de arquivos mensais salvos: %d de %d categorias\n", 
+            n_graficos_salvos, length(categorias_principais)))
 
 # =============================================================================
 # BLOCO 4: VISUALIZAÇÕES - PERSPECTIVA ANUAL ####
@@ -502,17 +697,29 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
   # Ano da previsão (ano seguinte ao último do treino)
   ano_forecast <- max(train_anual$ano) + 1
   
+  if (length(metodos_disponiveis) == 0) {
+    warning(sprintf("Material %s: nenhum método anual disponível para plotar", cd_mat))
+  }
+  
   for (metodo in metodos_disponiveis) {
     metodo_data <- mat_forecast$forecasts[[metodo]]
     
-    if (!is.null(metodo_data$point) && metodo_data$convergence) {
-      forecast_df <- tibble(
-        ano = ano_forecast,
-        valor_previsto = metodo_data$point[1],  # Apenas 1 ano à frente
-        metodo = toupper(metodo)
-      )
+    # Validar estrutura e convergência
+    if (!is.null(metodo_data) && 
+        !is.null(metodo_data$point) && 
+        !is.null(metodo_data$convergence) &&
+        metodo_data$convergence) {
       
-      forecast_data <- bind_rows(forecast_data, forecast_df)
+      # Verificar que temos ao menos 1 valor
+      if (length(metodo_data$point) > 0) {
+        forecast_df <- tibble(
+          ano = ano_forecast,
+          valor_previsto = metodo_data$point[1],  # Apenas 1 ano à frente
+          metodo = toupper(metodo)
+        )
+        
+        forecast_data <- bind_rows(forecast_data, forecast_df)
+      }
     }
   }
   
@@ -524,7 +731,24 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
     info_sbc <- tibble(adi = NA, cv2 = NA)
   }
   
-  # Criar gráfico
+  # Avisar se não há forecasts para plotar
+  if (nrow(forecast_data) == 0) {
+    warning(sprintf("Material %s: nenhum forecast anual convergiu - plotando apenas valores reais", 
+                    cd_mat))
+  }
+  
+  # Validar dados
+  if (nrow(train_anual) == 0) {
+    warning(sprintf("Material %s sem dados de treino anual", cd_mat))
+    return(NULL)
+  }
+  
+  if (nrow(test_anual) == 0) {
+    warning(sprintf("Material %s sem dados de teste anual", cd_mat))
+    return(NULL)
+  }
+  
+  # Criar gráfico base
   p <- ggplot() +
     # Série histórica anual (treino)
     geom_line(
@@ -547,21 +771,28 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
       color = "darkred",
       size = 4
     ) +
-    # Previsões
-    geom_point(
-      data = forecast_data,
-      aes(x = ano, y = valor_previsto, color = metodo, shape = metodo),
-      size = 3.5
-    ) +
     # Linha vertical separando treino/teste
     geom_vline(
       xintercept = max(train_anual$ano) + 0.5,
       linetype = "dashed",
       color = "gray30",
       linewidth = 0.5
-    ) +
-    scale_color_nejm() +
-    scale_shape_manual(values = c(15, 16, 17, 18, 19)) +
+    )
+  
+  # Adicionar previsões apenas se houver dados
+  if (nrow(forecast_data) > 0) {
+    p <- p +
+      geom_point(
+        data = forecast_data,
+        aes(x = ano, y = valor_previsto, color = metodo, shape = metodo),
+        size = 3.5
+      ) +
+      scale_color_nejm() +
+      scale_shape_manual(values = c(15, 16, 17, 18, 19))
+  }
+  
+  # Adicionar scales e labels
+  p <- p +
     scale_x_continuous(breaks = seq(min(train_anual$ano), 
                                     max(test_anual$ano), 
                                     by = 1)) +
@@ -589,7 +820,7 @@ plot_forecast_anual <- function(cd_mat, origem_nome, categoria) {
 }
 
 # Gerar gráficos anuais
-cat("📊 Gerando gráficos anuais...\n")
+cat("📊 Gerando gráficos anuais...\n\n")
 
 plots_anuais <- list()
 
@@ -597,25 +828,39 @@ for (i in 1:nrow(materiais_exemplo)) {
   
   mat_info <- materiais_exemplo[i, ]
   
-  cat(sprintf("   - Plotando %s (%s)...\n", 
+  cat(sprintf("   [%d/%d] Plotando %s (%s)...\n", 
+              i, nrow(materiais_exemplo),
               mat_info$cd_material, 
               mat_info$categoria))
   
-  p <- plot_forecast_anual(
-    cd_mat = mat_info$cd_material,
-    origem_nome = origem_recente,
-    categoria = mat_info$categoria
-  )
-  
-  if (!is.null(p)) {
-    plots_anuais[[i]] <- p
-  }
+  tryCatch({
+    p <- plot_forecast_anual(
+      cd_mat = mat_info$cd_material,
+      origem_nome = origem_recente,
+      categoria = mat_info$categoria
+    )
+    
+    if (!is.null(p)) {
+      plots_anuais[[i]] <- p
+      cat(sprintf("        ✅ OK\n"))
+    } else {
+      cat(sprintf("        ⚠️  Retornou NULL\n"))
+    }
+    
+  }, error = function(e) {
+    cat(sprintf("        ❌ ERRO: %s\n", conditionMessage(e)))
+    plots_anuais[[i]] <- NULL
+  })
 }
 
 # Criar painéis por categoria
-cat("\n📊 Criando painéis anuais por categoria...\n")
+cat("\n📊 Criando painéis anuais por categoria...\n\n")
+
+n_graficos_anuais_salvos <- 0
 
 for (cat_atual in categorias_principais) {
+  
+  cat(sprintf("   Categoria: %s\n", cat_atual))
   
   indices_categoria <- which(materiais_exemplo$categoria == cat_atual)
   
@@ -623,6 +868,9 @@ for (cat_atual in categorias_principais) {
     
     plots_categoria <- plots_anuais[indices_categoria]
     plots_categoria <- plots_categoria[!sapply(plots_categoria, is.null)]
+    
+    cat(sprintf("      - Gráficos válidos: %d de %d\n", 
+                length(plots_categoria), length(indices_categoria)))
     
     if (length(plots_categoria) > 0) {
       
@@ -653,10 +901,20 @@ for (cat_atual in categorias_principais) {
         dpi = 300
       )
       
-      cat(sprintf("   ✅ Salvo: %s\n", filename))
+      cat(sprintf("      ✅ Salvo: %s\n", filename))
+      n_graficos_anuais_salvos <- n_graficos_anuais_salvos + 1
+    } else {
+      cat(sprintf("      ⚠️  Nenhum gráfico válido - arquivo não criado\n"))
     }
+  } else {
+    cat(sprintf("      ⚠️  Nenhum material nesta categoria\n"))
   }
+  
+  cat("\n")
 }
+
+cat(sprintf("📊 Total de arquivos anuais salvos: %d de %d categorias\n", 
+            n_graficos_anuais_salvos, length(categorias_principais)))
 
 # =============================================================================
 # RELATÓRIO FINAL ####
@@ -691,3 +949,7 @@ log_message("VISUALIZAÇÃO DE FORECASTS CONCLUÍDA", "INFO")
 log_message("========================================", "INFO")
 
 cat("\n✅ Script 08 finalizado em:", format(Sys.time()), "\n\n")
+
+if(config$computation$parallel) {
+  plan(sequential)
+}
