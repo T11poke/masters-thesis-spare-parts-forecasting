@@ -78,9 +78,11 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 -   Análise estatística comparativa dos métodos de previsão com testes de significância e identificação de domínios de superioridade
 
-07_advanced_error_visualization.R
+07a_advanced_error-MAE_visualization.R
 
--   
+07b_multi_metric_analysis.R
+
+08_forecast_visualization.R
 
 ## 📊 Estrutura do Projeto
 
@@ -152,12 +154,18 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 -   **LinLin** (Função de Perda Assimétrica, p=0.85)
 -   **MAD/Mean Ratio**
 
-**Perspectivas de avaliação:** 1. **Mensal**: acurácia mês a mês (12 previsões) 2. **Anual agregada**: demanda total de 12 meses (planejamento orçamentário)
+**Perspectivas de avaliação:**
+
+1.  **Mensal**: acurácia mês a mês (12 previsões)
+
+2.  **Anual agregada**: demanda total de 12 meses (planejamento orçamentário)
+
+3.  **Anual nativa**: demanda de um ano prevista pela série nativa anual.
 
 ## 🔄 Estratégia de Validação
 
--   **Método**: Rolling Origin com janela expansiva
--   **Origens**: 4 pontos temporais
+-   **Método**: Fixed Origin com janela expansiva
+-   **Origens**: 6 pontos temporais
 -   **Horizonte**: 12 meses (h=12)
 -   **Treino mínimo**: 36 meses
 
@@ -181,10 +189,10 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📧 Contato
 
-santosdiaslasdr
+santosdiaslasdr\@protonmail.com
 
 ------------------------------------------------------------------------
 
 **Status**: 🚧 Em desenvolvimento\
-**Última atualização**: 2026-01-25\
-**Versão**: 2.1.1
+**Última atualização**: 2026-01-28\
+**Versão**: 2.1.3
