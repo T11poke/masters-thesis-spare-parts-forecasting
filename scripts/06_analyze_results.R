@@ -1,6 +1,5 @@
 # 06 - ANÁLISE ESTATÍSTICA COMPARATIVA ####
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Análise estatística comparativa dos métodos de previsão
 #            com testes de significância e identificação de domínios de superioridade
 # Data: 2025-12-09
@@ -68,6 +67,7 @@ consolidado <- readRDS(arquivo_consolidado)
 # Extrair componentes
 metricas_mensais <- consolidado$metricas_mensais
 metricas_anuais <- consolidado$metricas_anuais
+metricas_anuais_nativas <- consolidado$metricas_anuais_nativas
 resumo_por_metodo <- consolidado$resumo_por_metodo
 resumo_por_sbc <- consolidado$resumo_por_sbc
 metadata <- consolidado$metadata
@@ -82,7 +82,19 @@ cat(sprintf("   - Métricas anuais: %s linhas\n",
 cat(sprintf("   - Origens: %d\n", metadata$n_origens))
 cat(sprintf("   - Materiais: %s\n", 
             format(metadata$n_materiais_total, big.mark = ",")))
-cat(sprintf("   - Métodos: %d\n", metadata$n_metodos))
+cat(sprintf("   - Métodos mensais: %d\n", metadata$n_metodos_mensal))
+cat(sprintf("   - Métricas anuais nativas: %s linhas\n", 
+            format(nrow(metricas_anuais_nativas), big.mark = ",")))
+
+PERSPECTIVA_ANUAL_NATIVA_DISPONIVEL <- !is.null(consolidado$metadata$perspectiva_anual_disponivel) &&
+  consolidado$metadata$perspectiva_anual_disponivel &&
+  nrow(metricas_anuais_nativas) > 0
+cat("   ✅ Perspectiva anual nativa disponível para análise comparativa\n")
+cat(sprintf("   - Materiais (anual nativo): %s\n",
+            format(n_distinct(metricas_anuais_nativas$cd_material), big.mark = ",")))
+cat(sprintf("   - Métodos (anual nativo): %d\n",
+            n_distinct(metricas_anuais_nativas$metodo)))
+
 
 # Preparar dados agregados para análise
 cat("\n📊 Preparando dados agregados...\n")
@@ -217,6 +229,9 @@ summary(metricas_convergentes$bias_mensal) %>% print()
 cat("\nLinLin (p=0.85):\n")
 summary(metricas_convergentes$linlin_mensal) %>% print()
 
+cat("\nMAD/Mean ratio:\n")
+summary(metricas_convergentes$mad_mean_ratio) %>% print()
+
 # ===========================================================================
 # BLOCO 3: BENCHMARKING ESTATÍSTICO GLOBAL ####
 # ===========================================================================
@@ -284,6 +299,20 @@ ranking_bias_mensal <- metricas_metodo_global_mensal %>%
 
 cat("\n🏆 Top 10 métodos por Bias (menor valor absoluto):\n\n")
 print(ranking_bias_mensal %>% head(10))
+
+cat("\n🏆 Top 10 métodos por LinLin (mensal):\n\n")
+print(ranking_linlin_mensal %>% head(10))
+
+# Ranking por MAD/Mean ratio
+ranking_mad_mean_mensal <- metricas_metodo_global_mensal %>%
+  arrange(mad_mean_medio) %>%
+  mutate(
+    rank_mad_mean = row_number(),
+  ) %>%
+  select(rank_mad_mean, metodo, familia, mad_mean_medio)
+
+cat("\n🏆 Top 10 métodos por Bias (menor valor absoluto):\n\n")
+print(ranking_mad_mean_mensal %>% head(10))
 
 ## 3.2. Rankings Globais - Perspectiva ANUAL ####
 
@@ -404,14 +433,24 @@ ranking_bias_anual <- metricas_metodo_global_anual %>%
   select(rank_bias_anual, metodo, familia, bias_anual_medio, 
          bias_anual_abs_medio, bias_anual_sd)
 
-cat("\n🏆 Top 10 métodos com menor |Bias| ANUAL:\n\n")
-print(ranking_bias_anual %>% head(10))
+## 3.2.5. Ranking por Menor MAD/Mean ratio Anual ####
 
 
-## 3.2.5. Ranking Consolidado Anual ####
+ranking_mad_mean_anual <- metricas_metodo_global_anual %>%
+  arrange(mad_mean_anual_medio) %>%
+  mutate(
+    rank_mad_mean_anual = row_number()
+  ) %>%
+  select(rank_mad_mean_anual, metodo, familia, mad_mean_anual_medio)
+
+cat("\n🏆 Top 10 métodos com menor MAD/Mean Ratio ANUAL:\n\n")
+print(ranking_mad_mean_anual %>% head(10))
 
 
-cat("\n📊 3.2.5. Consolidando ranking anual multi-métrica...\n")
+## 3.2.6. Ranking Consolidado Anual ####
+
+
+cat("\n📊 3.2.6. Consolidando ranking anual multi-métrica...\n")
 
 ranking_consolidado_anual <- metricas_metodo_global_anual %>%
   left_join(
@@ -430,10 +469,15 @@ ranking_consolidado_anual <- metricas_metodo_global_anual %>%
     ranking_bias_anual %>% select(metodo, rank_bias_anual),
     by = "metodo"
   ) %>%
+  left_join(
+    ranking_mad_mean_anual %>% select(metodo, rank_mad_mean_anual),
+    by = "metodo"
+  ) %>%
   mutate(
     # Ranking médio (Borda count)
     rank_medio_anual = (rank_mae_anual + rank_rmse_anual + 
-                          rank_linlin_anual + rank_bias_anual) / 4
+                          rank_linlin_anual + rank_bias_anual +
+                          rank_mad_mean_anual) / 5
   ) %>%
   arrange(rank_medio_anual)
 
@@ -441,7 +485,7 @@ cat("\n🏆 Top 15 métodos - RANKING CONSOLIDADO ANUAL:\n\n")
 print(ranking_consolidado_anual %>% 
         select(metodo, familia, rank_medio_anual, rank_mae_anual, 
                rank_rmse_anual, rank_linlin_anual, rank_bias_anual,
-               mae_anual_medio, bias_anual_medio) %>%
+               rank_mad_mean_anual, mae_anual_medio, bias_anual_medio) %>%
         head(15))
 
 
@@ -523,9 +567,253 @@ ranking_anual <- metricas_metodo_global_anual %>%
 cat("🏆 Top 10 métodos por Erro Absoluto Anual:\n\n")
 print(ranking_anual %>% head(10))
 
-## 3.3. Comparação de Rankings: Mensal vs. Anual ####
+cat("\n", strrep("-", 70), "\n", sep = "")
+cat("3.3. RANKINGS GLOBAIS - PERSPECTIVA ANUAL NATIVA\n")
+cat(strrep("-", 70), "\n\n")
 
-cat("\n📊 3.3. COMPARAÇÃO DE RANKINGS: MENSAL VS. ANUAL\n\n")
+log_message("Gerando rankings - perspectiva anual nativa", "INFO")
+
+# Agregar métricas anuais nativas por método e origem
+metricas_metodo_origem_anual_nativo <- metricas_anuais_nativas %>%
+  filter(convergence) %>%
+  group_by(metodo, familia, origem) %>%
+  summarise(
+    n_materiais = n(),
+    mae_anual_nativo_medio = mean(mae_anual_nativo, na.rm = TRUE),
+    rmse_anual_nativo_medio = mean(rmse_anual_nativo, na.rm = TRUE),
+    bias_anual_nativo_medio = mean(bias_anual_nativo, na.rm = TRUE),
+    linlin_anual_nativo_medio = mean(linlin_anual_nativo, na.rm = TRUE),
+    mad_mean_anual_nativo_medio = mean(mad_mean_anual_nativo, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# Agregar por método (média entre origens)
+metricas_metodo_global_anual_nativo <- metricas_metodo_origem_anual_nativo %>%
+  group_by(metodo, familia) %>%
+  summarise(
+    n_total = sum(n_materiais),
+    n_origens = n(),
+    
+    # MAE anual nativo
+    mae_anual_nativo_medio = mean(mae_anual_nativo_medio, na.rm = TRUE),
+    mae_anual_nativo_sd = if_else(n() > 1, 
+                                  sd(mae_anual_nativo_medio, na.rm = TRUE), 
+                                  NA_real_),
+    mae_anual_nativo_cv = if_else(!is.na(mae_anual_nativo_sd) & mae_anual_nativo_medio > 0,
+                                  mae_anual_nativo_sd / mae_anual_nativo_medio, 
+                                  NA_real_),
+    
+    # RMSE anual nativo
+    rmse_anual_nativo_medio = mean(rmse_anual_nativo_medio, na.rm = TRUE),
+    rmse_anual_nativo_sd = if_else(n() > 1, 
+                                   sd(rmse_anual_nativo_medio, na.rm = TRUE), 
+                                   NA_real_),
+    
+    # Bias anual nativo
+    bias_anual_nativo_medio = mean(bias_anual_nativo_medio, na.rm = TRUE),
+    bias_anual_nativo_abs_medio = mean(abs(bias_anual_nativo_medio), na.rm = TRUE),
+    
+    # LinLin anual nativo
+    linlin_anual_nativo_medio = mean(linlin_anual_nativo_medio, na.rm = TRUE),
+    linlin_anual_nativo_sd = if_else(n() > 1, 
+                                     sd(linlin_anual_nativo_medio, na.rm = TRUE), 
+                                     NA_real_),
+    
+    # MAD/Mean anual nativo
+    mad_mean_anual_nativo_medio = mean(mad_mean_anual_nativo_medio, na.rm = TRUE),
+    
+    .groups = 'drop'
+  )
+
+cat("✅ Dados agregados preparados (perspectiva anual nativa)\n")
+
+### 3.3.1. Ranking por MAE Anual Nativo ####
+
+ranking_mae_anual_nativo <- metricas_metodo_global_anual_nativo %>%
+  arrange(mae_anual_nativo_medio) %>%
+  mutate(rank_mae_anual_nativo = row_number()) %>%
+  select(rank_mae_anual_nativo, metodo, familia, 
+         mae_anual_nativo_medio, mae_anual_nativo_sd, 
+         mae_anual_nativo_cv, n_total)
+
+cat("\n🏆 Top 10 métodos por MAE ANUAL NATIVO:\n\n")
+print(ranking_mae_anual_nativo %>% head(10))
+
+### 3.3.2. Ranking por RMSE Anual Nativo ####
+
+ranking_rmse_anual_nativo <- metricas_metodo_global_anual_nativo %>%
+  arrange(rmse_anual_nativo_medio) %>%
+  mutate(rank_rmse_anual_nativo = row_number()) %>%
+  select(rank_rmse_anual_nativo, metodo, familia, 
+         rmse_anual_nativo_medio, rmse_anual_nativo_sd, n_total)
+
+cat("\n🏆 Top 10 métodos por RMSE ANUAL NATIVO:\n\n")
+print(ranking_rmse_anual_nativo %>% head(10))
+
+### 3.3.3. Ranking por LinLin Anual Nativo ####
+
+ranking_linlin_anual_nativo <- metricas_metodo_global_anual_nativo %>%
+  arrange(linlin_anual_nativo_medio) %>%
+  mutate(rank_linlin_anual_nativo = row_number()) %>%
+  select(rank_linlin_anual_nativo, metodo, familia, 
+         linlin_anual_nativo_medio, linlin_anual_nativo_sd, n_total)
+
+cat("\n🏆 Top 10 métodos por LinLin ANUAL NATIVO:\n\n")
+print(ranking_linlin_anual_nativo %>% head(10))
+
+## 3.4. Comparação: Perspectiva Anual Agregada vs. Nativa ####
+
+cat("\n", strrep("-", 70), "\n", sep = "")
+cat("3.4. COMPARAÇÃO: ANUAL AGREGADA vs. ANUAL NATIVA\n")
+cat(strrep("-", 70), "\n\n")
+
+log_message("Análise comparativa de perspectivas anuais", "INFO")
+
+### 3.4.1. Comparação de Rankings ####
+
+cat("📊 Comparando rankings entre perspectivas anuais...\n\n")
+
+# Juntar rankings de ambas as perspectivas
+comparacao_perspectivas_anuais <- ranking_mae_anual %>%
+  select(metodo, rank_mae_agregado = rank_mae_anual, 
+         mae_agregado = mae_anual_medio) %>%
+  mutate(metodo = tolower(metodo)) %>%
+  left_join(
+    ranking_mae_anual_nativo %>%
+      select(metodo, rank_mae_nativo = rank_mae_anual_nativo,
+             mae_nativo = mae_anual_nativo_medio),
+    by = "metodo"
+  ) %>%
+  filter(!is.na(rank_mae_nativo)) %>%  # Apenas métodos presentes em ambas
+  mutate(
+    diferenca_rank = rank_mae_nativo - rank_mae_agregado,
+    diferenca_mae = mae_nativo - mae_agregado,
+    diferenca_mae_pct = (diferenca_mae / mae_agregado) * 100,
+    
+    melhor_perspectiva = case_when(
+      mae_nativo < mae_agregado ~ "Nativa",
+      mae_nativo > mae_agregado ~ "Agregada",
+      TRUE ~ "Empate"
+    ),
+    
+    tipo_diferenca_rank = case_when(
+      abs(diferenca_rank) <= 2 ~ "Estável (≤2 pos)",
+      diferenca_rank < -2 ~ "Melhora Nativa (>2 pos)",
+      diferenca_rank > 2 ~ "Piora Nativa (>2 pos)"
+    )
+  ) %>%
+  arrange(abs(diferenca_mae_pct))
+
+cat("📊 Métodos com MAIOR diferença entre perspectivas:\n\n")
+print(comparacao_perspectivas_anuais %>% 
+        arrange(desc(abs(diferenca_mae_pct))) %>%
+        select(metodo, mae_agregado, mae_nativo, diferenca_mae_pct, 
+               melhor_perspectiva, tipo_diferenca_rank) %>%
+        head(10))
+
+### 3.4.2. Estatísticas Resumo ####
+
+cat("\n📈 ESTATÍSTICAS RESUMO DA COMPARAÇÃO:\n\n")
+
+n_metodos_comparados <- nrow(comparacao_perspectivas_anuais)
+n_nativa_melhor <- sum(comparacao_perspectivas_anuais$melhor_perspectiva == "Nativa")
+n_agregada_melhor <- sum(comparacao_perspectivas_anuais$melhor_perspectiva == "Agregada")
+
+cat(sprintf("   - Métodos comparados: %d\n", n_metodos_comparados))
+cat(sprintf("   - Perspectiva nativa melhor: %d (%.1f%%)\n",
+            n_nativa_melhor, 
+            (n_nativa_melhor / n_metodos_comparados) * 100))
+cat(sprintf("   - Perspectiva agregada melhor: %d (%.1f%%)\n",
+            n_agregada_melhor,
+            (n_agregada_melhor / n_metodos_comparados) * 100))
+
+cat(sprintf("\n   - Diferença média MAE: %.2f unidades (%.2f%%)\n",
+            mean(abs(comparacao_perspectivas_anuais$diferenca_mae), na.rm = TRUE),
+            mean(abs(comparacao_perspectivas_anuais$diferenca_mae_pct), na.rm = TRUE)))
+
+cat(sprintf("   - Diferença mediana MAE: %.2f unidades (%.2f%%)\n",
+            median(abs(comparacao_perspectivas_anuais$diferenca_mae), na.rm = TRUE),
+            median(abs(comparacao_perspectivas_anuais$diferenca_mae_pct), na.rm = TRUE)))
+
+### 3.4.3. Correlação de Rankings ####
+
+cor_spearman_perspectivas <- cor(
+  comparacao_perspectivas_anuais$rank_mae_agregado,
+  comparacao_perspectivas_anuais$rank_mae_nativo,
+  method = "spearman",
+  use = "complete.obs"
+)
+
+cat(sprintf("\n📊 Correlação de Spearman entre perspectivas: ρ = %.3f\n",
+            cor_spearman_perspectivas))
+
+if(cor_spearman_perspectivas > 0.9) {
+  cat("   ✅ ALTA CONSISTÊNCIA: Rankings muito similares entre perspectivas\n")
+} else if(cor_spearman_perspectivas > 0.7) {
+  cat("   ⚠️  CONSISTÊNCIA MODERADA: Algumas diferenças entre perspectivas\n")
+} else {
+  cat("   ❌ BAIXA CONSISTÊNCIA: Rankings divergem substancialmente\n")
+}
+
+### 3.4.4. Análise por Família ####
+
+cat("\n📊 Desempenho por família de métodos:\n\n")
+
+comparacao_por_familia <- comparacao_perspectivas_anuais %>%
+  left_join(
+    resumo_por_metodo %>% select(metodo, familia),
+    by = "metodo"
+  ) %>%
+  group_by(familia) %>%
+  summarise(
+    n_metodos = n(),
+    mae_agregado_medio = mean(mae_agregado, na.rm = TRUE),
+    mae_nativo_medio = mean(mae_nativo, na.rm = TRUE),
+    diferenca_pct_media = mean(diferenca_mae_pct, na.rm = TRUE),
+    n_nativa_melhor = sum(melhor_perspectiva == "Nativa"),
+    prop_nativa_melhor = n_nativa_melhor / n() * 100,
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(prop_nativa_melhor))
+
+print(comparacao_por_familia)
+
+### 3.4.5. Teste de Hipótese ####
+
+cat("\n🔬 Teste t pareado: MAE Agregado vs. MAE Nativo\n\n")
+
+# Teste t pareado
+teste_t_perspectivas <- t.test(
+  comparacao_perspectivas_anuais$mae_agregado,
+  comparacao_perspectivas_anuais$mae_nativo,
+  paired = TRUE,
+  alternative = "two.sided"
+)
+
+cat(sprintf("   - Estatística t: %.3f\n", teste_t_perspectivas$statistic))
+cat(sprintf("   - p-valor: %.4f\n", teste_t_perspectivas$p.value))
+cat(sprintf("   - Intervalo de confiança 95%%: [%.2f, %.2f]\n",
+            teste_t_perspectivas$conf.int[1],
+            teste_t_perspectivas$conf.int[2]))
+
+if(teste_t_perspectivas$p.value < 0.05) {
+  cat("   ✅ RESULTADO: Diferença estatisticamente significativa (α=0.05)\n")
+  
+  if(mean(comparacao_perspectivas_anuais$mae_agregado) < 
+     mean(comparacao_perspectivas_anuais$mae_nativo)) {
+    cat("      → Perspectiva AGREGADA apresenta MAE significativamente menor\n")
+  } else {
+    cat("      → Perspectiva NATIVA apresenta MAE significativamente menor\n")
+  }
+} else {
+  cat("   ⚠️  RESULTADO: Sem diferença estatisticamente significativa (α=0.05)\n")
+  cat("      → Ambas as perspectivas apresentam desempenho equivalente\n")
+}
+
+
+## 3.5. Comparação de Rankings: Mensal vs. Anual ####
+
+cat("\n📊 3.5. COMPARAÇÃO DE RANKINGS: MENSAL VS. ANUAL\n\n")
 
 comparacao_rankings <- ranking_mae_mensal %>%
   select(metodo, rank_mae) %>%
@@ -565,10 +853,10 @@ if(cor_spearman > 0.8) {
   cat("   ⚠️  Rankings apresentam diferenças substanciais entre perspectivas\n")
 }
 
-## 3.4. Testes de Significância Estatística ####
+## 3.6. Testes de Significância Estatística ####
 
 cat("\n", strrep("-", 70), "\n", sep = "")
-cat("3.4. TESTES DE SIGNIFICÂNCIA ESTATÍSTICA\n")
+cat("3.6. TESTES DE SIGNIFICÂNCIA ESTATÍSTICA\n")
 cat(strrep("-", 70), "\n\n")
 
 log_message("Executando testes de significância estatística", "INFO")
@@ -682,7 +970,7 @@ materiais_completos <- metricas_mensais %>%
   filter(convergence) %>%
   group_by(cd_material, origem) %>%
   summarise(n_metodos = n_distinct(metodo), .groups = 'drop') %>%
-  filter(n_metodos == metadata$n_metodos) %>%
+  filter(n_metodos == metadata$n_metodos_mensal) %>%
   select(cd_material, origem)
 
 if(nrow(materiais_completos) < 30) {
@@ -757,6 +1045,7 @@ desempenho_por_sbc <- metricas_mensais %>%
     rmse_medio = mean(rmse_mensal, na.rm = TRUE),
     bias_medio = mean(bias_mensal, na.rm = TRUE),
     linlin_medio = mean(linlin_mensal, na.rm = TRUE),
+    mad_mean_medio = mean(mad_mean_ratio, na.rm = TRUE),
     .groups = 'drop'
   )
 
@@ -769,11 +1058,11 @@ top5_por_categoria <- map_dfr(categorias, function(cat) {
   desempenho_por_sbc %>%
     filter(categoria_sbc == cat) %>%
     arrange(mae_medio) %>%
-    head(15) %>%
+    head(5) %>%
     mutate(rank = row_number()) %>%
     select(
       categoria_sbc, rank, metodo, familia, mae_medio, rmse_medio,
-      bias_medio, linlin_medio, n_materiais
+      bias_medio, linlin_medio, mad_mean_medio, n_materiais
       )
 })
 
@@ -1224,7 +1513,7 @@ log_message("Exportando tabelas para dissertação", "INFO")
 tabelas_dissertacao <- list(
   "1_Ranking_Global_Mensal" = ranking_mae_mensal %>% head(20),
   
-  "2_Ranking_Global_Anual" = ranking_anual %>% head(20),
+  "2_Ranking_Global_Anual_Agregado" = ranking_anual %>% head(20),
   
   "3_Ranking_Consolidado" = ranking_consolidado %>% head(20),
   
@@ -1236,20 +1525,47 @@ tabelas_dissertacao <- list(
   
   "7_Taxa_Convergencia" = taxa_convergencia,
   
-  "8_Comparacao_Mensal_Anual" = comparacao_rankings %>% head(20),
+  "8_Comparacao_Mensal_Anual_Agregado" = comparacao_rankings %>% head(20),
   
-  "9_Comparação_mensal_multicriterio" = desempenho_mensal %>% head(20),
+  "9_Desempenho_Mensal_Multicriterio" = desempenho_mensal %>% head(20),
   
-  "metricas_anuais" = tabela_8_desempenho_anual
+  "10_Desempenho_Anual_Agregado" = tabela_8_desempenho_anual
 )
 
 # Adicionar tabelas condicionais
+if(PERSPECTIVA_ANUAL_NATIVA_DISPONIVEL) {
+  
+  tabelas_dissertacao[["11_Ranking_Anual_Nativo"]] <- 
+    ranking_mae_anual_nativo %>% head(20)
+  
+  tabelas_dissertacao[["12_Comparacao_Perspectivas_Anuais"]] <- 
+    comparacao_perspectivas_anuais %>%
+    select(metodo, rank_mae_agregado, rank_mae_nativo, 
+           mae_agregado, mae_nativo, diferenca_mae_pct,
+           melhor_perspectiva, tipo_diferenca_rank)
+  
+  tabelas_dissertacao[["13_Desempenho_Anual_Nativo"]] <- 
+    metricas_metodo_global_anual_nativo %>%
+    arrange(mae_anual_nativo_medio) %>%
+    select(metodo, familia, mae_anual_nativo_medio, 
+           rmse_anual_nativo_medio, bias_anual_nativo_medio,
+           linlin_anual_nativo_medio, mad_mean_anual_nativo_medio) %>%
+    mutate(across(where(is.numeric), ~round(., 3))) %>%
+    head(20)
+  
+  tabelas_dissertacao[["14_Comparacao_Por_Familia"]] <- 
+    comparacao_por_familia
+  
+  cat("\n✅ Tabelas de perspectiva anual nativa adicionadas\n")
+}
+
+# Adicionar tabelas condicionais existentes
 if(poisson_presente && !is.null(dm_results)) {
-  tabelas_dissertacao[["10_Teste_DM_vs_Poisson"]] <- dm_results
+  tabelas_dissertacao[["15_Teste_DM_vs_Poisson"]] <- dm_results
 }
 
 if(!is.null(desempenho_por_subsistema)) {
-  tabelas_dissertacao[["11_Desempenho_Subsistema"]] <- top3_por_subsistema
+  tabelas_dissertacao[["16_Desempenho_Subsistema"]] <- top3_por_subsistema
 }
 
 # Salvar Excel
@@ -1321,6 +1637,34 @@ if(!all(is.na(estabilidade_temporal$mae_cv))) {
 } else {
   cat("   - Análise de variabilidade indisponível (apenas 1 origem temporal)\n")
   cat("   - Considere executar com múltiplas origens para análise de estabilidade\n")
+}
+
+if(PERSPECTIVA_ANUAL_NATIVA_DISPONIVEL) {
+  cat("\n5. Comparação de Perspectivas Anuais:\n")
+  cat(sprintf("   - Métodos comparados: %d\n", n_metodos_comparados))
+  cat(sprintf("   - Correlação de rankings: %.3f\n", cor_spearman_perspectivas))
+  
+  if(teste_t_perspectivas$p.value < 0.05) {
+    cat("   - Diferença estatisticamente significativa detectada (p<0.05)\n")
+    
+    if(mean(comparacao_perspectivas_anuais$mae_agregado) < 
+       mean(comparacao_perspectivas_anuais$mae_nativo)) {
+      cat("   → Perspectiva AGREGADA superior em média\n")
+    } else {
+      cat("   → Perspectiva NATIVA superior em média\n")
+    }
+  } else {
+    cat("   - Perspectivas apresentam desempenho estatisticamente equivalente\n")
+  }
+  
+  # Destacar família com melhor desempenho em perspectiva nativa
+  melhor_familia_nativa <- comparacao_por_familia %>%
+    arrange(desc(prop_nativa_melhor)) %>%
+    slice(1)
+  
+  cat(sprintf("   - Família com maior ganho em perspectiva nativa: %s (%.0f%% dos métodos)\n",
+              melhor_familia_nativa$familia,
+              melhor_familia_nativa$prop_nativa_melhor))
 }
 
 if(poisson_presente) {
