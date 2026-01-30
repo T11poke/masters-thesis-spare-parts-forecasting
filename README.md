@@ -193,6 +193,6 @@ santosdiaslasdr\@protonmail.com
 
 ------------------------------------------------------------------------
 
-**Status**: 🚧 Em desenvolvimento\
+**Status**: ⚡🚧 Em análise\
 **Última atualização**: 2026-01-28\
 **Versão**: 2.1.3
