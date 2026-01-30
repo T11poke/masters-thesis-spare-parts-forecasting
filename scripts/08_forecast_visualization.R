@@ -377,7 +377,15 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
   
   # Definir métodos a plotar
   if (is.null(metodos_plotar)) {
-    metodos_plotar <- c("sba", "croston", "tsb", "ses", "naive")
+    metodos_plotar <- switch(
+      categoria,
+      "Smooth" = c("naive", "arima", "hw_add", "ets", "croston"),
+      "Erratic" = c("sba", "croston", "tsb", "gamma", "tslm"),
+      "Intermittent" = c("sba", "croston", "tsb", "adida_k12_mean", "ma"),
+      "Lumpy" = c("adida_k12_mean", "adida_k3_mean", "mean", "sba", "croston"),
+      # Default se categoria não reconhecida
+      c("sba", "croston", "tsb", "ses", "naive")
+    )
   }
   
   # Converter para lowercase para match
@@ -489,6 +497,11 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
   
   # Adicionar previsões apenas se houver dados
   if (nrow(forecast_data) > 0) {
+    
+    # Garantir que temos tipos de linha suficientes para até 6 métodos
+    n_metodos <- length(unique(forecast_data$metodo))
+    tipos_linha <- c("dashed", "dotted", "dotdash", "longdash", "twodash","solid")[1:n_metodos]
+    
     p <- p +
       geom_line(
         data = forecast_data,
@@ -498,7 +511,7 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
       ) +
       scale_color_nejm() +
       scale_linetype_manual(
-        values = c("twodash", "dashed", "dotted", "dotdash", "longdash")
+        values = tipos_linha
       )
   }
   
@@ -539,7 +552,7 @@ plot_forecast_mensal <- function(cd_mat, origem_nome, categoria,
 cat("📊 Gerando gráficos individuais...\n\n")
 
 # Métodos a plotar (nomes em lowercase conforme estrutura de dados)
-metodos_principais <- c("sba", "adida_k3_mean", "croston", "poisson", "naive")
+# metodos_principais <- c("sba", "adida_k3_mean", "croston", "poisson", "naive")
 
 plots_mensais <- list()
 
@@ -557,7 +570,7 @@ for (i in 1:nrow(materiais_exemplo)) {
       cd_mat = mat_info$cd_material,
       origem_nome = origem_recente,
       categoria = mat_info$categoria,
-      metodos_plotar = metodos_principais
+      # metodos_plotar = metodos_principais
     )
     
     if (!is.null(p)) {
