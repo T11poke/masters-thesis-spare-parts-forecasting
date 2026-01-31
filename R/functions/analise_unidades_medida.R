@@ -2,7 +2,6 @@
 #
 # Arquivo: R/functions/analise_unidades_medida.R.R
 # Descrição: Funções para análise unidades de medida
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Data: 2025-11-28
 #
 # PROBLEMA IDENTIFICADO: Materiais alternados podem ter unidades diferentes

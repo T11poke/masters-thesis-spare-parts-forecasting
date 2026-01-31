@@ -2,7 +2,6 @@
 # FUNÇÕES AUXILIARES PARA FORECASTING INTERMITENTE
 # =============================================================================
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Funções de suporte para métodos intermitentes (Croston, SBA, TSB)
 # Data: 2025-12-09
 # Versão: 1.0.0

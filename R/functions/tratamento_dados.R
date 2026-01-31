@@ -2,7 +2,6 @@
 #
 # Arquivo: R/functions/tratamento_dados.R
 # Descrição: Funções utilitárias para limpeza e tratamento de dados
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 
 # Função para converter números brasileiros para formato R ####
 #' Converte números no formato brasileiro para formato R

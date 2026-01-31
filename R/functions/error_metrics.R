@@ -2,18 +2,12 @@
 # FUNÇÕES DE MÉTRICAS DE ERRO
 # =============================================================================
 #
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Descrição: Implementa métricas padrão e especializadas para avaliação
 #            de forecasts em demanda intermitente
 # Data: 2025-12-08
 # Versão: 1.0.0
 #
-# Referências:
-# - BOYLAN, J. E.; SYNTETOS, A. A. Intermittent Demand Forecasting: 
-#   Context, Methods and Applications. Wiley, 2021.
-# - SYNTETOS, A. A.; BOYLAN, J. E. The accuracy of intermittent demand 
-#   estimates. International Journal of Forecasting, v. 21, n. 2, 
-#   p. 303-314, 2005.
+
 
 # =============================================================================
 # MÉTRICAS BÁSICAS ####

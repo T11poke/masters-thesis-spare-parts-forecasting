@@ -2,7 +2,6 @@
 #
 # Arquivo: R/functions/series_temporais.R
 # Descrição: Funções para criar e manipular séries temporais completas
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Data: 2025-11-27
 
 #' Cria séries temporais completas com zeros explícitos

@@ -3,7 +3,6 @@
 # Arquivo: R/functions/train_test_split_functions.R
 # Descrição: Funções para criação e validação de splits temporais com rolling origin,
 #            classificação SBC e estatísticas descritivas por origem
-# Autor: LUIZ ANTONIO DOS SANTOS DIAS REZENDE
 # Data: 2025-12-03
 #
 # Dependências: tidyverse, tsibble, lubridate
