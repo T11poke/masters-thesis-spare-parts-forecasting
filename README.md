@@ -189,7 +189,7 @@ Avaliar comparativamente o desempenho de diferentes métodos de previsão de dem
 
 ## 📧 Contato
 
-santosdiaslasdr\@protonmail.com
+santosdias@protonmail.com
 
 ------------------------------------------------------------------------
 
